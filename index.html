@@ -434,7 +434,7 @@
   <script>
     // ---- Supabase Setup ----
     const SUPABASE_URL = 'https://xrtetfxvyicdqfpwnpzt.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_Z5r38omcjP3khE-8Y8Tr0A_DSTGtSN9';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhydGV0Znh2eWljZHFmcHducHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTA0ODMsImV4cCI6MjA5MDU2NjQ4M30.Y3v9FytVpOzCIYRvRitSoQeoPOaCHifnH6bRgoPEKBc';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const STORAGE_BUCKET = 'media';
@@ -444,8 +444,14 @@
     }
 
     async function uploadFile(path, file) {
-      const { error } = await sb.storage.from(STORAGE_BUCKET).upload(path, file, { upsert: true });
-      if (error) console.error('Upload error:', error);
+      const { error } = await sb.storage.from(STORAGE_BUCKET).upload(path, file, {
+        upsert: true,
+        contentType: file.type
+      });
+      if (error) {
+        console.error('Upload error:', path, error);
+        alert('Upload failed: ' + error.message);
+      }
     }
 
     async function deleteFile(path) {
