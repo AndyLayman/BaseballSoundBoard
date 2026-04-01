@@ -884,7 +884,16 @@
         let posTimer;
         ['pos1', 'pos2', 'pos3'].forEach(key => {
           card.querySelector(`select.${key}`).addEventListener('change', e => {
-            p[key] = e.target.value;
+            const val = e.target.value;
+            if (val) {
+              const conflict = players.find(other => other !== p && other[key] === val);
+              if (conflict) {
+                alert(`${conflict.name} is already playing ${val} in that inning.`);
+                e.target.value = p[key];
+                return;
+              }
+            }
+            p[key] = val;
             clearTimeout(posTimer);
             posTimer = setTimeout(() => savePlayerToDB(p), 500);
           });
