@@ -964,8 +964,11 @@
         setTimeout(() => {
           audio.pause();
           audio.currentTime = 0;
-          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-          gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+          // Reset gain AFTER pause so there's no audible pop
+          requestAnimationFrame(() => {
+            gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+          });
           if (callback) callback();
         }, duration);
       } catch (e) {
