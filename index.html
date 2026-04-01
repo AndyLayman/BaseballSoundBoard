@@ -295,12 +295,10 @@
     #progress-ball.active { display: block; }
     #progress-ball .seams {
       position: absolute; inset: 0;
-      animation: roll3d 4s linear infinite;
-      transform-style: preserve-3d;
+      animation: roll-seams 6s linear infinite;
     }
-    @keyframes roll3d {
-      0% { transform: rotateY(0deg) rotateX(15deg); }
-      100% { transform: rotateY(360deg) rotateX(15deg); }
+    @keyframes roll-seams {
+      to { transform: rotate(360deg); }
     }
     #progress-ball svg { width: 14px; height: 14px; }
     /* --- Mobile Optimizations --- */
