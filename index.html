@@ -364,7 +364,10 @@
 
     /* PWA standalone mode - account for safe areas */
     @supports (padding-top: env(safe-area-inset-top)) {
-      header { padding-top: calc(10px + env(safe-area-inset-top)) !important; }
+      header { padding-top: calc(12px + env(safe-area-inset-top)) !important; }
+      header .settings-toggle, header .theme-toggle {
+        top: calc(50% + env(safe-area-inset-top) / 2);
+      }
       #now-playing { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
     }
   </style>
