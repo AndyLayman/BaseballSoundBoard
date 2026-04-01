@@ -926,22 +926,23 @@
       }
     }
 
-    function fadeOut(audio, callback, duration = 1500) {
+    function fadeOut(audio, callback, duration = 2000) {
       const startVolume = audio.volume;
-      const steps = 30;
-      const interval = duration / steps;
-      const volumeStep = startVolume / steps;
-      let step = 0;
-      const fade = setInterval(() => {
-        step++;
-        audio.volume = Math.max(0, startVolume - volumeStep * step);
-        if (step >= steps) {
-          clearInterval(fade);
+      const startTime = performance.now();
+      function tick() {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Exponential curve — sounds natural, fades fast then trails off
+        audio.volume = startVolume * Math.pow(1 - progress, 3);
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
           audio.pause();
           audio.volume = startVolume;
           if (callback) callback();
         }
-      }, interval);
+      }
+      requestAnimationFrame(tick);
     }
 
     function togglePlayPause() {
