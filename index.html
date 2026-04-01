@@ -443,6 +443,12 @@
       return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
     }
 
+    function makeAudio(url) {
+      const a = new Audio(url);
+      a.crossOrigin = 'anonymous';
+      return a;
+    }
+
     async function uploadFile(path, file) {
       const { error } = await sb.storage.from(STORAGE_BUCKET).upload(path, file, {
         upsert: true,
@@ -538,7 +544,7 @@
       if (soundRows) {
         for (const s of soundRows) {
           const url = storageUrl(`sfx-${s.id}`);
-          const entry = { id: s.id, fileName: s.file_name, label: s.label, url, audio: new Audio(url) };
+          const entry = { id: s.id, fileName: s.file_name, label: s.label, url, audio: makeAudio(url) };
           sounds.push(entry);
           renderSfxItem(entry);
         }
@@ -560,7 +566,7 @@
             if (p[type + '_file']) {
               const fileUrl = storageUrl(`player-${p.id}-${type}`);
               player[type + 'Url'] = fileUrl;
-              player[type + 'Audio'] = new Audio(fileUrl);
+              player[type + 'Audio'] = makeAudio(fileUrl);
             }
           }
           players.push(player);
@@ -632,7 +638,7 @@
         if (error || !data) { console.error('Insert sound error:', error); continue; }
         await uploadFile(`sfx-${data.id}`, file);
         const url = storageUrl(`sfx-${data.id}`);
-        const entry = { id: data.id, fileName: data.file_name, label: data.label, url, audio: new Audio(url) };
+        const entry = { id: data.id, fileName: data.file_name, label: data.label, url, audio: makeAudio(url) };
         sounds.push(entry);
         renderSfxItem(entry);
       }
@@ -760,7 +766,7 @@
           p.introFile = file.name;
           await uploadFile(`player-${p.id}-intro`, file);
           p.introUrl = storageUrl(`player-${p.id}-intro`);
-          p.introAudio = new Audio(p.introUrl);
+          p.introAudio = makeAudio(p.introUrl);
           renderRoster();
           await savePlayerToDB(p);
         });
@@ -773,7 +779,7 @@
           p.songFile = file.name;
           await uploadFile(`player-${p.id}-song`, file);
           p.songUrl = storageUrl(`player-${p.id}-song`);
-          p.songAudio = new Audio(p.songUrl);
+          p.songAudio = makeAudio(p.songUrl);
           renderRoster();
           await savePlayerToDB(p);
         });
@@ -786,7 +792,7 @@
           p.comboFile = file.name;
           await uploadFile(`player-${p.id}-combo`, file);
           p.comboUrl = storageUrl(`player-${p.id}-combo`);
-          p.comboAudio = new Audio(p.comboUrl);
+          p.comboAudio = makeAudio(p.comboUrl);
           renderRoster();
           await savePlayerToDB(p);
         });
@@ -893,7 +899,11 @@
       }
       const item = playQueue[queueIndex];
       item.audio.currentTime = 0;
-      item.audio.volume = 1;
+      try {
+        ensureFadeReady(item.audio);
+        gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+      } catch(e) { /* first interaction may fail, audio still plays via default output */ }
       item.audio.play();
       isPlaying = true;
       updateNowPlaying();
@@ -927,22 +937,44 @@
       }
     }
 
-    function fadeOut(audio, callback, duration = 2000) {
-      const startVolume = audio.volume;
-      const startTime = performance.now();
-      function tick() {
-        const elapsed = performance.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        audio.volume = startVolume * Math.pow(1 - progress, 3);
-        if (progress < 1) {
-          requestAnimationFrame(tick);
-        } else {
-          audio.pause();
-          audio.volume = 1;
-          if (callback) callback();
-        }
+    // Web Audio fade
+    let audioCtx, gainNode;
+    const connectedAudios = new WeakSet();
+
+    function ensureFadeReady(audio) {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioCtx.createGain();
+        gainNode.connect(audioCtx.destination);
       }
-      requestAnimationFrame(tick);
+      if (!connectedAudios.has(audio)) {
+        const src = audioCtx.createMediaElementSource(audio);
+        src.connect(gainNode);
+        connectedAudios.add(audio);
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function fadeOut(audio, callback, duration = 2000) {
+      try {
+        ensureFadeReady(audio);
+        gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(gainNode.gain.value || 1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+        setTimeout(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+          if (callback) callback();
+        }, duration);
+      } catch (e) {
+        // Fallback: just stop
+        console.warn('Fade failed, stopping:', e);
+        audio.pause();
+        audio.currentTime = 0;
+        if (callback) callback();
+      }
     }
 
     function togglePlayPause() {
