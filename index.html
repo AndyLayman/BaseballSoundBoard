@@ -213,10 +213,11 @@
     }
     .lineup-card .lc-buttons { display: flex; gap: 8px; }
     .lineup-card .lc-btn {
-      flex: 1; padding: 8px; border: 1px solid var(--border-light); border-radius: 6px;
-      background: var(--bg-deep); color: var(--text); font-size: 0.8rem; font-weight: 600;
+      flex: 0.5; padding: 6px; border: 1px solid var(--border-light); border-radius: 6px;
+      background: var(--bg-deep); color: var(--text); font-size: 0.75rem; font-weight: 600;
       cursor: pointer; text-align: center; transition: all 0.15s;
     }
+    .lineup-card .lc-btn.full { flex: 1; padding: 10px; font-size: 0.9rem; }
     .lineup-card .lc-btn:hover { background: var(--border-light); }
     .lineup-card .lc-btn.full { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
     .lineup-card .lc-btn.full:hover { background: var(--accent-hover); }
