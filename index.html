@@ -810,7 +810,7 @@
                 <label>${lbl}</label>
                 <select class="${cls}">
                   <option value="">—</option>
-                  ${['P','C','1B','2B','3B','SS','LF','CF','RF','DH','BN'].map(pos => `<option value="${pos}" ${val === pos ? 'selected' : ''}>${pos}</option>`).join('')}
+                  ${['P','C','1B','2B','3B','SS','LF','LC','RC','RF','DH','BN'].map(pos => `<option value="${pos}" ${val === pos ? 'selected' : ''}>${pos}</option>`).join('')}
                 </select>
               </div>
             `).join('')}
