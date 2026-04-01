@@ -285,17 +285,6 @@
       position: absolute; top: 0; left: 0; height: 3px;
       background: var(--accent); transition: width 0.1s linear; width: 0%;
     }
-    #progress-ball {
-      position: absolute; top: -5px; right: -6px; width: 14px; height: 14px; display: none;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 30%, #fff8e0, var(--accent) 50%, #a07800 100%);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 -1px 2px rgba(0,0,0,0.15);
-      overflow: hidden;
-    }
-    #progress-ball.active { display: block; animation: roll-ball 3s linear infinite; }
-    #progress-ball .seams { position: absolute; inset: 0; }
-    @keyframes roll-ball { to { transform: rotate(360deg); } }
-    #progress-ball svg { width: 14px; height: 14px; }
     /* --- Mobile Optimizations --- */
     @media (max-width: 600px) {
       /* Larger touch targets everywhere */
@@ -453,7 +442,7 @@
 
   <!-- Now Playing -->
   <div id="now-playing">
-    <div id="progress-bar"><div id="progress-ball"><div class="seams"><svg viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg"><path d="M4.2 2.5 C5.5 4.5, 5.5 9.5, 4.2 11.5" stroke="rgba(120,70,20,0.6)" stroke-width="0.8" fill="none" stroke-linecap="round"/><path d="M9.8 2.5 C8.5 4.5, 8.5 9.5, 9.8 11.5" stroke="rgba(120,70,20,0.6)" stroke-width="0.8" fill="none" stroke-linecap="round"/><line x1="4.8" y1="3.2" x2="5.8" y2="3.8" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="4.4" y1="5" x2="5.5" y2="5" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="4.4" y1="6.8" x2="5.5" y2="7" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="4.4" y1="9" x2="5.5" y2="9" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="4.8" y1="10.8" x2="5.8" y2="10.2" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="9.2" y1="3.2" x2="8.2" y2="3.8" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="9.6" y1="5" x2="8.5" y2="5" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="9.6" y1="6.8" x2="8.5" y2="7" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="9.6" y1="9" x2="8.5" y2="9" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/><line x1="9.2" y1="10.8" x2="8.2" y2="10.2" stroke="rgba(120,70,20,0.5)" stroke-width="0.5" stroke-linecap="round"/></svg></div></div></div>
+    <div id="progress-bar"></div>
     <div class="track-info">
       <div class="track-name" id="track-name">Nothing playing</div>
       <div class="track-status" id="track-status">Add sounds and tap to play</div>
@@ -634,7 +623,6 @@
     const trackName = document.getElementById('track-name');
     const trackStatus = document.getElementById('track-status');
     const progressBar = document.getElementById('progress-bar');
-    const progressBall = document.getElementById('progress-ball');
     const playPauseBtn = document.getElementById('play-pause-btn');
 
     // ---- Settings Cog ----
@@ -1093,7 +1081,6 @@
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
         trackName.textContent = playQueue[queueIndex].label;
         trackStatus.textContent = isPlaying ? 'Now playing' : 'Paused';
-        progressBall.classList.toggle('active', isPlaying);
         playPauseBtn.innerHTML = isPlaying
           ? '<i data-lucide="pause" style="width:20px;height:20px;"></i>'
           : '<i data-lucide="play" style="width:20px;height:20px;"></i>';
@@ -1104,7 +1091,6 @@
         playPauseBtn.innerHTML = '<i data-lucide="play" style="width:20px;height:20px;"></i>';
         lucide.createIcons();
         progressBar.style.width = '0%';
-        progressBall.classList.remove('active');
       }
     }
 
