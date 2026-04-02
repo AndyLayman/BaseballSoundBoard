@@ -566,13 +566,11 @@
     async function loadAllData() {
       // Load sounds
       const { data: soundRows } = await sb.from('sounds').select('*').order('sort_order');
-      console.log('Sound rows loaded:', soundRows);
       if (soundRows) {
         for (const s of soundRows) {
           const url = storageUrl(`sfx-${s.id}`);
           const entry = { id: s.id, fileName: s.file_name, label: s.label, url, audio: makeAudio(url) };
           sounds.push(entry);
-          console.log('Calling renderSfxItem for', entry.id);
           renderSfxItem(entry);
         }
       }
@@ -709,15 +707,12 @@
       `;
       let labelTimer;
       const inp = li.querySelector('input');
-      console.log('Attaching listener to input for', entry.id, inp);
       inp.addEventListener('input', e => {
-        console.log('Input event fired:', e.target.value);
         entry.label = e.target.value;
         clearTimeout(labelTimer);
         labelTimer = setTimeout(async () => {
-          const { data, error } = await sb.from('sounds').update({ label: entry.label }).eq('id', entry.id).select();
+          const { error } = await sb.from('sounds').update({ label: entry.label }).eq('id', entry.id);
           if (error) console.error('Label save error:', error);
-          else console.log('Label saved:', entry.label, data);
         }, 500);
       });
       li.querySelector('.remove-btn').addEventListener('click', async () => {
