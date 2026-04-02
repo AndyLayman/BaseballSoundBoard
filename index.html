@@ -1019,13 +1019,17 @@
         gainNode.gain.setValueAtTime(gainNode.gain.value || 1, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
         setTimeout(() => {
+          // Set gain to 0 immediately to prevent any blip
+          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
           audio.pause();
           audio.currentTime = 0;
-          // Wait for audio pipeline to fully drain before resetting gain
-          setTimeout(() => {
-            gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-          }, 100);
+          // Reset gain after pause has fully settled
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+            });
+          });
           if (callback) callback();
         }, duration);
       } catch (e) {
