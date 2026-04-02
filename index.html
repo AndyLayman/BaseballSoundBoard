@@ -497,9 +497,12 @@
     }
 
     async function uploadFile(path, file) {
+      // Remove existing file first to ensure clean replace
+      await sb.storage.from(STORAGE_BUCKET).remove([path]);
       const { error } = await sb.storage.from(STORAGE_BUCKET).upload(path, file, {
         upsert: true,
-        contentType: file.type
+        contentType: file.type,
+        cacheControl: '0'
       });
       if (error) {
         console.error('Upload error:', path, error);
@@ -608,7 +611,7 @@
             songFile: p.song_file || null, songUrl: null, songAudio: null,
             comboFile: p.combo_file || null, comboUrl: null, comboAudio: null
           };
-          if (p.photo_file) player.photoUrl = storageUrl(`player-${p.id}-photo`);
+          if (p.photo_file) player.photoUrl = storageUrl(`player-${p.id}-photo`) + '?t=' + Date.now();
           for (const type of ['intro', 'song', 'combo']) {
             if (p[type + '_file']) {
               const fileUrl = storageUrl(`player-${p.id}-${type}`);
