@@ -507,9 +507,7 @@
     }
 
     function makeAudio(url) {
-      const a = new Audio(url);
-      a.crossOrigin = 'anonymous';
-      return a;
+      return new Audio(url);
     }
 
     async function uploadFile(path, file) {
@@ -1048,16 +1046,12 @@
         const audio = playQueue[queueIndex].audio;
         audio.pause();
         audio.currentTime = 0;
+        audio.volume = 1;
       }
       clearButtonPlaying();
       playQueue = queue;
       queueIndex = 0;
       isPlaying = false;
-      // Reset gain immediately for new playback
-      if (gainNode && audioCtx) {
-        gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
-      }
       playCurrentInQueue();
     }
 
@@ -1076,13 +1070,7 @@
         }
       });
       item.audio.currentTime = 0;
-      try {
-        ensureFadeReady(item.audio);
-        gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-        // Brief ramp to avoid click
-        gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
-      } catch(e) { /* first interaction may fail, audio still plays via default output */ }
+      item.audio.volume = 1;
       item.audio.play();
       isPlaying = true;
       setButtonPlaying(item.btn || null);
@@ -1117,46 +1105,22 @@
       }
     }
 
-    // Web Audio fade
-    let audioCtx, gainNode;
-    const connectedAudios = new WeakSet();
-
-    function ensureFadeReady(audio) {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        gainNode = audioCtx.createGain();
-        gainNode.connect(audioCtx.destination);
-      }
-      if (!connectedAudios.has(audio)) {
-        const src = audioCtx.createMediaElementSource(audio);
-        src.connect(gainNode);
-        connectedAudios.add(audio);
-      }
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    }
-
+    // Volume-based fade (avoids Web Audio API which breaks Bluetooth on mobile)
     function fadeOut(audio, callback, duration = 2000) {
-      try {
-        ensureFadeReady(audio);
-        gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(gainNode.gain.value || 1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
-        setTimeout(() => {
-          // Set gain to 0 immediately to prevent any blip
-          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-          gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
+      const steps = 20;
+      const interval = duration / steps;
+      const startVol = audio.volume;
+      let step = 0;
+      const timer = setInterval(() => {
+        step++;
+        audio.volume = Math.max(0, startVol * (1 - step / steps));
+        if (step >= steps) {
+          clearInterval(timer);
           audio.pause();
-          // Don't reset currentTime — preserve position for resume
-          // Don't reset gain here — playCurrentInQueue ramps it up when starting next song
+          audio.volume = 1;
           if (callback) callback();
-        }, duration);
-      } catch (e) {
-        // Fallback: just stop
-        console.warn('Fade failed, stopping:', e);
-        audio.pause();
-        audio.currentTime = 0;
-        if (callback) callback();
-      }
+        }
+      }, interval);
     }
 
     function togglePlayPause() {
@@ -1165,16 +1129,10 @@
       const item = playQueue[queueIndex];
       if (isPlaying) {
         clearButtonPlaying();
-        item.audio.pause();
         isPlaying = false;
+        fadeOut(item.audio, null, 500);
       } else {
-        // Resume with gain ramp to avoid blip
-        try {
-          ensureFadeReady(item.audio);
-          gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-          gainNode.gain.setValueAtTime(0.001, audioCtx.currentTime);
-          gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.05);
-        } catch(e) {}
+        item.audio.volume = 1;
         item.audio.play();
         isPlaying = true;
         setButtonPlaying(item.btn || null);
