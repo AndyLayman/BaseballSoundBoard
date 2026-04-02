@@ -130,6 +130,14 @@
     }
     .player-card.dragging { opacity: 0.3; }
     .player-card.drag-over { border-top: 3px solid var(--accent); margin-top: -3px; }
+    .player-card.benched { opacity: 0.5; }
+    .player-card .bench-toggle {
+      margin-left: auto; border: none; background: none; cursor: pointer;
+      color: var(--text-dim); font-size: 0.75rem; display: flex; align-items: center; gap: 4px;
+      padding: 4px 8px; border-radius: 6px; transition: all 0.15s;
+    }
+    .player-card .bench-toggle:hover { background: var(--border-light); }
+    .player-card.benched .bench-toggle { color: var(--accent); }
     .drag-handle {
       cursor: grab; color: var(--text-dim); font-size: 1.2rem; padding: 0 4px;
       user-select: none; flex-shrink: 0;
@@ -563,7 +571,7 @@
     // ---- Players persistence ----
     async function savePlayerToDB(p) {
       const { data, error } = await sb.from('players').upsert({
-        id: p.id, name: p.name, number: p.number,
+        id: p.id, name: p.name, number: p.number, active: p.active !== false,
         photo_file: p.photoFile, intro_file: p.introFile,
         song_file: p.songFile, combo_file: p.comboFile,
         sort_order: p.sortOrder || 0
@@ -582,6 +590,7 @@
         players[i].sortOrder = i;
         await sb.from('players').upsert({
           id: players[i].id, name: players[i].name, number: players[i].number,
+          active: players[i].active !== false,
           photo_file: players[i].photoFile, intro_file: players[i].introFile,
           song_file: players[i].songFile, combo_file: players[i].comboFile,
           sort_order: i
@@ -608,6 +617,7 @@
         for (const p of playerRows) {
           const player = {
             id: p.id, name: p.name, number: p.number,
+            active: p.active !== false,
             photoFile: p.photo_file || null, photoUrl: null,
             introFile: p.intro_file || null, introUrl: null, introAudio: null,
             songFile: p.song_file || null, songUrl: null, songAudio: null,
@@ -781,7 +791,7 @@
       rosterEmpty.style.display = players.length === 0 ? 'block' : 'none';
       players.forEach(p => {
         const card = document.createElement('div');
-        card.className = 'player-card';
+        card.className = 'player-card' + (p.active === false ? ' benched' : '');
         card.draggable = true;
         card.dataset.index = players.indexOf(p);
         card.innerHTML = `
@@ -790,6 +800,10 @@
             ${p.photoUrl ? `<img class="player-photo" src="${p.photoUrl}" alt="${esc(p.name)}">` : '<div class="player-photo-placeholder"><i data-lucide="camera" style="width:16px;height:16px;"></i></div>'}
             <div class="player-number">${esc(p.number)}</div>
             <div class="player-name-display">${esc(p.name)}</div>
+            <button class="bench-toggle" title="${p.active !== false ? 'Bench player' : 'Activate player'}">
+              <i data-lucide="${p.active !== false ? 'user-check' : 'user-x'}" style="width:14px;height:14px;"></i>
+              ${p.active !== false ? 'Active' : 'Benched'}
+            </button>
           </div>
           <div class="player-audio-row">
             <label>Photo:</label>
@@ -816,6 +830,12 @@
             <button class="small-btn upload-combo">Upload</button>
           </div>
         `;
+
+        card.querySelector('.bench-toggle').addEventListener('click', async () => {
+          p.active = p.active === false ? true : false;
+          await savePlayerToDB(p);
+          renderRoster();
+        });
 
         const photoInput = card.querySelector('.photo-file');
         card.querySelector('.upload-photo').addEventListener('click', () => photoInput.click());
@@ -921,8 +941,9 @@
 
       // Lineup
       lineupGrid.innerHTML = '';
-      lineupEmpty.style.display = players.length === 0 ? 'block' : 'none';
-      players.forEach(p => {
+      const activePlayers = players.filter(p => p.active !== false);
+      lineupEmpty.style.display = activePlayers.length === 0 ? 'block' : 'none';
+      activePlayers.forEach(p => {
         const card = document.createElement('div');
         card.className = 'lineup-card';
 
