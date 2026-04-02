@@ -1171,7 +1171,7 @@
     playPauseBtn.addEventListener('click', togglePlayPause);
     document.getElementById('next-btn').addEventListener('click', skipNext);
     document.getElementById('prev-btn').addEventListener('click', skipPrev);
-    document.getElementById('stop-btn').addEventListener('click', stopAll);
+    document.getElementById('stop-btn').addEventListener('click', () => stopAll());
 
     function updateNowPlaying() {
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
