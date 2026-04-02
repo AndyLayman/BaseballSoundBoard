@@ -1041,6 +1041,7 @@
 
     // ---- Playback Engine ----
     function playFromQueue(queue) {
+      cancelFade();
       // Fully stop and replace when starting something new
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
         const audio = playQueue[queueIndex].audio;
@@ -1106,16 +1107,21 @@
     }
 
     // Volume-based fade (avoids Web Audio API which breaks Bluetooth on mobile)
+    let fadeTimer = null;
+    function cancelFade() {
+      if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+    }
     function fadeOut(audio, callback, duration = 2000) {
+      cancelFade();
       const steps = 20;
       const interval = duration / steps;
       const startVol = audio.volume;
       let step = 0;
-      const timer = setInterval(() => {
+      fadeTimer = setInterval(() => {
         step++;
         audio.volume = Math.max(0, startVol * (1 - step / steps));
         if (step >= steps) {
-          clearInterval(timer);
+          cancelFade();
           audio.pause();
           audio.volume = 1;
           if (callback) callback();
@@ -1132,6 +1138,7 @@
         isPlaying = false;
         fadeOut(item.audio, null, 500);
       } else {
+        cancelFade();
         item.audio.volume = 1;
         item.audio.play();
         isPlaying = true;
