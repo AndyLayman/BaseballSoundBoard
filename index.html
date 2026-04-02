@@ -576,13 +576,19 @@
 
     // ---- Players persistence ----
     async function savePlayerToDB(p) {
-      const { data, error } = await sb.from('players').upsert({
+      const payload = {
         id: p.id, name: p.name, number: p.number, active: p.active !== false,
         photo_file: p.photoFile, intro_file: p.introFile,
         song_file: p.songFile, combo_file: p.comboFile,
         sort_order: p.sortOrder || 0
-      }).select();
-      if (error) console.error('Save player error:', error);
+      };
+      let { data, error } = await sb.from('players').upsert(payload).select();
+      if (error) {
+        // Retry without active column if it doesn't exist yet
+        delete payload.active;
+        ({ data, error } = await sb.from('players').upsert(payload).select());
+        if (error) console.error('Save player error:', error);
+      }
       return data;
     }
 
@@ -594,13 +600,18 @@
     async function savePlayers() {
       for (let i = 0; i < players.length; i++) {
         players[i].sortOrder = i;
-        await sb.from('players').upsert({
-          id: players[i].id, name: players[i].name, number: players[i].number,
-          active: players[i].active !== false,
-          photo_file: players[i].photoFile, intro_file: players[i].introFile,
-          song_file: players[i].songFile, combo_file: players[i].comboFile,
+        const pl = players[i];
+        const payload = {
+          id: pl.id, name: pl.name, number: pl.number, active: pl.active !== false,
+          photo_file: pl.photoFile, intro_file: pl.introFile,
+          song_file: pl.songFile, combo_file: pl.comboFile,
           sort_order: i
-        });
+        };
+        let { error } = await sb.from('players').upsert(payload);
+        if (error) {
+          delete payload.active;
+          await sb.from('players').upsert(payload);
+        }
       }
     }
 
