@@ -496,8 +496,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
     // ---- Supabase Setup ----
-    const SUPABASE_URL = 'https://xrtetfxvyicdqfpwnpzt.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhydGV0Znh2eWljZHFmcHducHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTA0ODMsImV4cCI6MjA5MDU2NjQ4M30.Y3v9FytVpOzCIYRvRitSoQeoPOaCHifnH6bRgoPEKBc';
+    const STAGING_URL = 'https://xrtetfxvyicdqfpwnpzt.supabase.co';
+    const STAGING_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhydGV0Znh2eWljZHFmcHducHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTA0ODMsImV4cCI6MjA5MDU2NjQ4M30.Y3v9FytVpOzCIYRvRitSoQeoPOaCHifnH6bRgoPEKBc';
+    const PROD_URL = 'https://fbvdwhbsewhmkjomftjr.supabase.co';
+    const PROD_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZidmR3aGJzZXdobWtqb21mdGpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjM3ODAsImV4cCI6MjA5MDczOTc4MH0.33mIS7xoEh0gig0rseqwQ9TAw3qVEkmU3HvJA88eoNM';
+
+    const isStaging = new URLSearchParams(window.location.search).has('staging');
+    const SUPABASE_URL = isStaging ? STAGING_URL : PROD_URL;
+    const SUPABASE_KEY = isStaging ? STAGING_KEY : PROD_KEY;
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const STORAGE_BUCKET = 'media';
