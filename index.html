@@ -83,6 +83,31 @@
       --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
+    /* Gradient border utility — uses double background + padding trick */
+    .grad-border {
+      border: none !important;
+      background: linear-gradient(var(--bg-input), var(--bg-input)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      border: 1px solid transparent !important;
+    }
+    .grad-border:hover {
+      background: linear-gradient(var(--gray-800), var(--gray-800)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      box-shadow: var(--glow-accent);
+    }
+    .grad-border-dark {
+      border: none !important;
+      background: linear-gradient(var(--bg-deep), var(--bg-deep)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      border: 1px solid transparent !important;
+    }
+    .grad-border-transparent {
+      border: none !important;
+      background: linear-gradient(var(--black), var(--black)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      border: 1px solid transparent !important;
+    }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: var(--font);
@@ -95,12 +120,14 @@
     /* --- Settings Cog --- */
     .settings-toggle {
       position: absolute; left: var(--sp-3); top: 50%; transform: translateY(-50%);
-      background: none; border: 1px solid var(--border); border-radius: var(--r-full);
+      background: linear-gradient(var(--bg-deep), var(--bg-deep)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      border: 1px solid transparent; border-radius: var(--r-full);
       color: var(--text-muted); cursor: pointer;
       width: 38px; height: 38px; display: flex; align-items: center;
       justify-content: center; transition: all var(--duration-fast) var(--ease-in-out);
     }
-    .settings-toggle:hover { border-color: var(--teal); color: var(--teal); box-shadow: var(--glow-teal); }
+    .settings-toggle:hover { color: var(--teal); box-shadow: var(--glow-accent); }
     .settings-toggle.active { border-color: var(--teal); color: var(--teal); }
 
     /* --- Theme Toggle --- */
@@ -267,12 +294,14 @@
     }
     .player-audio-row .file-label.empty { color: var(--text-dim); font-style: italic; }
     .small-btn {
-      background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--r-1);
+      background: linear-gradient(var(--bg-input), var(--bg-input)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      border: 1px solid transparent; border-radius: var(--r-1);
       color: var(--text-muted); padding: 6px 12px; font-family: var(--font);
       font-weight: var(--font-weight); font-size: var(--text-sm); cursor: pointer; white-space: nowrap;
       transition: all var(--duration-fast) var(--ease-in-out);
     }
-    .small-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .small-btn:hover { color: var(--teal); box-shadow: var(--glow-accent); }
     .small-btn.danger { background: none; border-color: transparent; color: var(--text-dim); }
     .small-btn.danger:hover { color: var(--danger); border-color: var(--danger); }
     .upload-progress-wrap {
@@ -301,14 +330,17 @@
       gap: var(--sp-3); justify-content: center;
     }
     .sound-btn {
-      width: 120px; height: 120px; background: var(--bg-card); border: 1px solid var(--border);
+      width: 120px; height: 120px;
+      background: linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      border: 1px solid transparent;
       border-radius: var(--r-2); color: var(--text); font-family: var(--font);
       font-weight: var(--font-weight); font-size: var(--text-sm);
       cursor: pointer; transition: all var(--duration-fast) var(--ease-in-out);
       display: flex; align-items: center; justify-content: center; text-align: center;
       padding: var(--sp-2); word-break: break-word; line-height: 1.3;
     }
-    .sound-btn:hover { border-color: var(--teal); transform: scale(1.03); box-shadow: var(--glow-teal); }
+    .sound-btn:hover { transform: scale(1.03); box-shadow: var(--glow-accent); }
     .sound-btn:active { transform: scale(0.97); }
     .sound-btn.playing {
       background: var(--accent-linear); border-color: transparent; color: var(--black);
@@ -371,8 +403,10 @@
     .lineup-card .lc-buttons { display: flex; gap: var(--sp-2); align-items: center; }
     .lineup-card .lc-btn {
       flex: 1; height: 40px; min-height: 40px; max-height: 40px;
-      border: 1px solid var(--border); border-radius: var(--r-1);
-      background: var(--bg-deep); color: var(--text-muted); font-family: var(--font);
+      background: linear-gradient(var(--bg-deep), var(--bg-deep)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      border: 1px solid transparent; border-radius: var(--r-1);
+      color: var(--text-muted); font-family: var(--font);
       font-weight: var(--font-weight); font-size: var(--text-sm);
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       transition: all var(--duration-fast) var(--ease-in-out); padding: 0; box-sizing: border-box;
@@ -380,7 +414,7 @@
     .lineup-card .lc-btn-sq {
       flex: 0 0 40px; width: 40px;
     }
-    .lineup-card .lc-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .lineup-card .lc-btn:hover { color: var(--teal); box-shadow: var(--glow-accent); }
     .lineup-card .lc-btn.full {
       background: var(--accent-linear); color: var(--black); border: none;
     }
@@ -437,18 +471,27 @@
     #now-playing .time-display { font-size: var(--text-sm); color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
     #now-playing .controls { display: flex; align-items: center; gap: var(--sp-2); }
     #now-playing .controls button {
-      background: none; border: 1px solid var(--border); border-radius: var(--r-full);
+      background: linear-gradient(rgba(20,20,20,0.9), rgba(20,20,20,0.9)) padding-box,
+                  linear-gradient(135deg, var(--teal), var(--green), var(--purple)) border-box;
+      border: 1px solid transparent; border-radius: var(--r-full);
       width: 42px; height: 42px; color: var(--text-muted);
       cursor: pointer; display: flex; align-items: center;
       justify-content: center; transition: all var(--duration-fast) var(--ease-in-out);
     }
-    #now-playing .controls button:hover { border-color: var(--teal); color: var(--teal); box-shadow: var(--glow-teal); }
+    #now-playing .controls button:hover { color: var(--teal); box-shadow: var(--glow-accent); }
     #now-playing .controls .play-pause {
-      width: 50px; height: 50px; border-color: var(--teal); color: var(--teal);
+      width: 50px; height: 50px; color: var(--teal);
     }
-    #now-playing .controls .play-pause:hover { box-shadow: var(--glow-teal); }
-    #now-playing .stop-btn { border-color: var(--gray-700) !important; }
-    #now-playing .stop-btn:hover { border-color: var(--danger) !important; color: var(--danger) !important; box-shadow: var(--glow-danger) !important; }
+    #now-playing .controls .play-pause:hover { box-shadow: var(--glow-accent); }
+    #now-playing .stop-btn {
+      background: linear-gradient(rgba(20,20,20,0.9), rgba(20,20,20,0.9)) padding-box,
+                  linear-gradient(135deg, var(--gray-700), var(--gray-600)) border-box !important;
+    }
+    #now-playing .stop-btn:hover {
+      background: linear-gradient(rgba(20,20,20,0.9), rgba(20,20,20,0.9)) padding-box,
+                  linear-gradient(135deg, var(--danger), var(--danger)) border-box !important;
+      color: var(--danger) !important; box-shadow: var(--glow-danger) !important;
+    }
     #progress-bar {
       position: absolute; top: 0; left: 0; height: 2px;
       background: linear-gradient(90deg, var(--teal), var(--green), var(--purple));
