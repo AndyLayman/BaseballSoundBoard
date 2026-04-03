@@ -186,6 +186,18 @@
     .small-btn:hover { background: var(--text-dim); }
     .small-btn.danger { background: none; color: var(--text-dim); }
     .small-btn.danger:hover { color: var(--accent); }
+    .upload-status {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem;
+      min-width: 20px; transition: opacity 0.3s;
+    }
+    .upload-status .spinner {
+      width: 14px; height: 14px; border: 2px solid var(--border-light);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .upload-status .check { color: #4CAF50; font-weight: bold; }
+    .upload-status .fail { color: #E53935; font-weight: bold; }
 
     /* --- Play Page --- */
     #board {
@@ -534,8 +546,9 @@
       });
       if (error) {
         console.error('Upload error:', path, error);
-        alert('Upload failed: ' + error.message);
+        return false;
       }
+      return true;
     }
 
     function compressImage(file, maxSize = 512, quality = 0.8) {
@@ -839,24 +852,28 @@
             <span class="file-label ${p.photoFile ? '' : 'empty'}">${p.photoFile ? esc(p.photoFile) : 'No photo'}</span>
             <input type="file" accept="image/*" class="file-input photo-file">
             <button class="small-btn upload-photo">Upload</button>
+            <span class="upload-status photo-status"></span>
           </div>
           <div class="player-audio-row">
             <label>Intro:</label>
             <span class="file-label ${p.introFile ? '' : 'empty'}">${p.introFile ? esc(p.introFile) : 'No file'}</span>
             <input type="file" accept="audio/*" class="file-input intro-file">
             <button class="small-btn upload-intro">Upload</button>
+            <span class="upload-status intro-status"></span>
           </div>
           <div class="player-audio-row">
             <label>Walk-up:</label>
             <span class="file-label ${p.songFile ? '' : 'empty'}">${p.songFile ? esc(p.songFile) : 'No file'}</span>
             <input type="file" accept="audio/*" class="file-input song-file">
             <button class="small-btn upload-song">Upload</button>
+            <span class="upload-status song-status"></span>
           </div>
           <div class="player-audio-row">
             <label>Combined:</label>
             <span class="file-label ${p.comboFile ? '' : 'empty'}">${p.comboFile ? esc(p.comboFile) : 'No file'}</span>
             <input type="file" accept="audio/*" class="file-input combo-file">
             <button class="small-btn upload-combo">Upload</button>
+            <span class="upload-status combo-status"></span>
           </div>
         `;
 
@@ -873,57 +890,96 @@
           numTimer = setTimeout(() => savePlayerToDB(p), 500);
         });
 
+        function showStatus(el, state) {
+          if (state === 'loading') el.innerHTML = '<span class="spinner"></span>';
+          else if (state === 'success') {
+            el.innerHTML = '<span class="check">&#10003;</span>';
+            setTimeout(() => { el.innerHTML = ''; }, 3000);
+          } else {
+            el.innerHTML = '<span class="fail">&#10007; Failed</span>';
+            setTimeout(() => { el.innerHTML = ''; }, 4000);
+          }
+        }
+
         const photoInput = card.querySelector('.photo-file');
+        const photoStatus = card.querySelector('.photo-status');
         card.querySelector('.upload-photo').addEventListener('click', () => photoInput.click());
         photoInput.addEventListener('change', async () => {
           const file = photoInput.files[0];
           if (!file) return;
+          showStatus(photoStatus, 'loading');
           const compressed = await compressImage(file);
           p.photoFile = file.name;
           const blob = new File([compressed], 'photo.jpg', { type: 'image/jpeg' });
-          await uploadFile(`player-${p.id}-photo`, blob);
-          p.photoUrl = storageUrl(`player-${p.id}-photo`) + '?t=' + Date.now();
-          renderRoster();
-          await savePlayerToDB(p);
+          const ok = await uploadFile(`player-${p.id}-photo`, blob);
+          if (ok) {
+            p.photoUrl = storageUrl(`player-${p.id}-photo`) + '?t=' + Date.now();
+            showStatus(photoStatus, 'success');
+            renderRoster();
+            await savePlayerToDB(p);
+          } else {
+            showStatus(photoStatus, 'error');
+          }
         });
 
         const introInput = card.querySelector('.intro-file');
+        const introStatus = card.querySelector('.intro-status');
         card.querySelector('.upload-intro').addEventListener('click', () => introInput.click());
         introInput.addEventListener('change', async () => {
           const file = introInput.files[0];
           if (!file) return;
+          showStatus(introStatus, 'loading');
           p.introFile = file.name;
-          await uploadFile(`player-${p.id}-intro`, file);
-          p.introUrl = storageUrl(`player-${p.id}-intro`);
-          p.introAudio = makeAudio(p.introUrl);
-          renderRoster();
-          await savePlayerToDB(p);
+          const ok = await uploadFile(`player-${p.id}-intro`, file);
+          if (ok) {
+            p.introUrl = storageUrl(`player-${p.id}-intro`);
+            p.introAudio = makeAudio(p.introUrl);
+            showStatus(introStatus, 'success');
+            renderRoster();
+            await savePlayerToDB(p);
+          } else {
+            showStatus(introStatus, 'error');
+          }
         });
 
         const songInput = card.querySelector('.song-file');
+        const songStatus = card.querySelector('.song-status');
         card.querySelector('.upload-song').addEventListener('click', () => songInput.click());
         songInput.addEventListener('change', async () => {
           const file = songInput.files[0];
           if (!file) return;
+          showStatus(songStatus, 'loading');
           p.songFile = file.name;
-          await uploadFile(`player-${p.id}-song`, file);
-          p.songUrl = storageUrl(`player-${p.id}-song`);
-          p.songAudio = makeAudio(p.songUrl);
-          renderRoster();
-          await savePlayerToDB(p);
+          const ok = await uploadFile(`player-${p.id}-song`, file);
+          if (ok) {
+            p.songUrl = storageUrl(`player-${p.id}-song`);
+            p.songAudio = makeAudio(p.songUrl);
+            showStatus(songStatus, 'success');
+            renderRoster();
+            await savePlayerToDB(p);
+          } else {
+            showStatus(songStatus, 'error');
+          }
         });
 
         const comboInput = card.querySelector('.combo-file');
+        const comboStatus = card.querySelector('.combo-status');
         card.querySelector('.upload-combo').addEventListener('click', () => comboInput.click());
         comboInput.addEventListener('change', async () => {
           const file = comboInput.files[0];
           if (!file) return;
+          showStatus(comboStatus, 'loading');
           p.comboFile = file.name;
-          await uploadFile(`player-${p.id}-combo`, file);
-          p.comboUrl = storageUrl(`player-${p.id}-combo`);
-          p.comboAudio = makeAudio(p.comboUrl);
-          renderRoster();
-          await savePlayerToDB(p);
+          const ok = await uploadFile(`player-${p.id}-combo`, file);
+          if (ok) {
+            p.comboUrl = storageUrl(`player-${p.id}-combo`);
+            p.comboAudio = makeAudio(p.comboUrl);
+            showStatus(comboStatus, 'success');
+            renderRoster();
+            await savePlayerToDB(p);
+          } else {
+            showStatus(comboStatus, 'error');
+          }
         });
 
         // Drag and drop reorder
