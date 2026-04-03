@@ -496,8 +496,20 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
     // ---- Supabase Setup ----
-    const SUPABASE_URL = 'https://xrtetfxvyicdqfpwnpzt.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhydGV0Znh2eWljZHFmcHducHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTA0ODMsImV4cCI6MjA5MDU2NjQ4M30.Y3v9FytVpOzCIYRvRitSoQeoPOaCHifnH6bRgoPEKBc';
+    const ENV = {
+      staging: {
+        url: 'https://xrtetfxvyicdqfpwnpzt.supabase.co',
+        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhydGV0Znh2eWljZHFmcHducHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTA0ODMsImV4cCI6MjA5MDU2NjQ4M30.Y3v9FytVpOzCIYRvRitSoQeoPOaCHifnH6bRgoPEKBc'
+      },
+      production: {
+        url: 'https://fbvdwhbsewhmkjomftjr.supabase.co',
+        key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZidmR3aGJzZXdobWtqb21mdGpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNjM3ODAsImV4cCI6MjA5MDczOTc4MH0.33mIS7xoEh0gig0rseqwQ9TAw3qVEkmU3HvJA88eoNM'
+      }
+    };
+    // Switch environment: 'staging' or 'production'
+    const CURRENT_ENV = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'staging' : 'production';
+    const SUPABASE_URL = ENV[CURRENT_ENV].url;
+    const SUPABASE_KEY = ENV[CURRENT_ENV].key;
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const STORAGE_BUCKET = 'media';
