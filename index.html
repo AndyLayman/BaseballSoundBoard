@@ -444,6 +444,17 @@
     .modal .form-group input:focus, .modal .form-group select:focus { border-color: var(--teal); }
     .modal .modal-actions { display: flex; gap: var(--sp-3); justify-content: flex-end; margin-top: var(--sp-4); }
 
+    /* Category Chips */
+    .category-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      padding: 6px 12px; border-radius: var(--r-full); border: 1px solid var(--border);
+      background: var(--bg-input); color: var(--text-muted); font-family: var(--font);
+      font-weight: var(--font-weight); font-size: var(--text-xs); cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-in-out);
+    }
+    .chip:hover { border-color: var(--teal); color: var(--teal); }
+    .chip.active { background: var(--accent-gradient); color: var(--black); border-color: transparent; }
+
     /* Waveform animation */
     .waveform { display: flex; align-items: center; justify-content: center; height: 32px; width: 60px; overflow: hidden; }
     .waveform svg { width: 100%; height: 100%; }
@@ -794,13 +805,13 @@
       </div>
       <div class="form-group">
         <label>Category</label>
-        <select id="song-category-input">
-          <option value="between-innings">Between Innings</option>
-          <option value="warmup">Warmup</option>
-          <option value="pre-game">Pre-Game</option>
-          <option value="post-game">Post-Game</option>
-          <option value="other">Other</option>
-        </select>
+        <div class="category-chips" id="song-category-chips">
+          <button type="button" class="chip active" data-value="between-innings">Between Innings</button>
+          <button type="button" class="chip" data-value="warmup">Warmup</button>
+          <button type="button" class="chip" data-value="pre-game">Pre-Game</button>
+          <button type="button" class="chip" data-value="post-game">Post-Game</button>
+          <button type="button" class="chip" data-value="other">Other</button>
+        </div>
       </div>
       <div class="modal-actions">
         <button class="small-btn" id="cancel-song-btn">Cancel</button>
@@ -1093,7 +1104,11 @@
     const songFileInput = document.getElementById('song-file-input');
     const songTitleInput = document.getElementById('song-title-input');
     const songArtistInput = document.getElementById('song-artist-input');
-    const songCategoryInput = document.getElementById('song-category-input');
+    const songCategoryChips = document.getElementById('song-category-chips');
+    songCategoryChips.addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (chip) chip.classList.toggle('active');
+    });
     const librarySearchInput = document.getElementById('library-search');
 
     document.getElementById('play-all-btn').addEventListener('click', () => {
@@ -1106,7 +1121,7 @@
       songFileInput.value = '';
       songTitleInput.value = '';
       songArtistInput.value = '';
-      songCategoryInput.value = 'between-innings';
+      songCategoryChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       addSongModal.classList.add('visible');
     });
     document.getElementById('cancel-song-btn').addEventListener('click', () => {
@@ -1121,7 +1136,8 @@
       if (!file) return alert('Please select an audio file.');
       const title = songTitleInput.value.trim() || file.name.replace(/\.[^.]+$/, '');
       const artist = songArtistInput.value.trim();
-      const category = songCategoryInput.value;
+      const selected = [...songCategoryChips.querySelectorAll('.chip.active')].map(c => c.dataset.value);
+      const category = selected.length ? selected.join(',') : 'other';
       const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
       const saveBtn = document.getElementById('save-song-btn');
@@ -1163,7 +1179,7 @@
         div.innerHTML = `
           <div class="song-info">
             <div class="song-title">${song.title}</div>
-            <div class="song-meta">${song.artist ? song.artist + ' · ' : ''}${categoryLabels[song.category] || song.category}</div>
+            <div class="song-meta">${song.artist ? song.artist + ' · ' : ''}${song.category.split(',').map(c => categoryLabels[c.trim()] || c.trim()).join(', ')}</div>
           </div>
           <div class="song-actions">
             <button class="play-song" title="Play"><i data-lucide="play" style="width:14px;height:14px;"></i></button>
