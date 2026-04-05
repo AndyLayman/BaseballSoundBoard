@@ -1751,10 +1751,18 @@
         }
       });
       item.audio.currentTime = 0;
-      // Ensure AudioContext is active before routing audio through it
-      ensureAudioCtx();
-      fadeIn(item.audio, crossfadeEnabled ? CROSSFADE_DURATION : 0.05);
-      item.audio.play();
+      // Only use Web Audio fade for crossfade transitions
+      if (crossfadeEnabled) {
+        ensureAudioCtx();
+        fadeIn(item.audio, CROSSFADE_DURATION);
+      } else if (audioGains.has(item.audio)) {
+        // Audio was previously routed through Web Audio, ensure gain is full
+        ensureAudioCtx();
+        const gain = audioGains.get(item.audio);
+        gain.gain.cancelScheduledValues(audioCtx.currentTime);
+        gain.gain.setValueAtTime(1, audioCtx.currentTime);
+      }
+      item.audio.play().catch(e => console.warn('Play failed:', e));
       isPlaying = true;
       setButtonPlaying(item.btn || null);
       updateNowPlaying();
