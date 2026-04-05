@@ -1751,6 +1751,8 @@
         }
       });
       item.audio.currentTime = 0;
+      // Ensure AudioContext is active before routing audio through it
+      ensureAudioCtx();
       fadeIn(item.audio, crossfadeEnabled ? CROSSFADE_DURATION : 0.05);
       item.audio.play();
       isPlaying = true;
@@ -1873,9 +1875,12 @@
         gain.gain.setValueAtTime(gain.gain.value || 1, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
         setTimeout(() => {
-          gain.gain.cancelScheduledValues(audioCtx.currentTime);
-          gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
           audio.pause();
+          // Reset gain after pause so this audio is ready to play at full volume next time
+          setTimeout(() => {
+            gain.gain.cancelScheduledValues(audioCtx.currentTime);
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+          }, 100);
           if (callback) callback();
         }, duration);
       } catch (e) {
@@ -1890,8 +1895,13 @@
       try {
         const gain = getGainNode(audio);
         gain.gain.cancelScheduledValues(audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(1, audioCtx.currentTime + duration);
+        if (duration <= 0.1) {
+          // No fade needed — just ensure full volume
+          gain.gain.setValueAtTime(1, audioCtx.currentTime);
+        } else {
+          gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+          gain.gain.linearRampToValueAtTime(1, audioCtx.currentTime + duration);
+        }
       } catch(e) {}
     }
 
