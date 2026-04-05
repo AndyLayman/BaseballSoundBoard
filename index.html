@@ -1163,7 +1163,7 @@
           </div>
         `;
         div.querySelector('.play-song').addEventListener('click', () => {
-          playSingle(song.audio, song.title);
+          playFromQueue([{ audio: song.audio, name: song.title }]);
         });
         div.querySelector('.delete-song').addEventListener('click', async () => {
           if (confirm(`Delete "${song.title}"?`)) await deleteLibrarySong(song.id);
