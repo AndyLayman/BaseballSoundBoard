@@ -346,18 +346,21 @@
 
     /* --- Play Page --- */
     #board-wrap {
-      overflow-x: auto; overflow-y: hidden;
+      overflow-x: auto;
+      overflow-y: clip;
       scroll-snap-type: x proximity;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: thin;
       scrollbar-color: var(--gray-700) transparent;
+      padding: 20px 0;
+      margin: -20px 0;
     }
     #board-wrap::-webkit-scrollbar { height: 4px; }
     #board-wrap::-webkit-scrollbar-track { background: transparent; }
     #board-wrap::-webkit-scrollbar-thumb { background: var(--gray-700); border-radius: var(--r-full); }
     #board {
       display: flex; gap: var(--sp-3);
-      padding: 20px 2px;
+      padding: 0 2px;
     }
     .sound-btn {
       flex: 0 0 90px; width: 90px; height: 90px;
