@@ -1738,6 +1738,15 @@
           q.audio.currentTime = 0;
         }
       });
+      // If audio is in error state or never loaded, create a fresh element
+      if (item.audio.error || item.audio.readyState === 0) {
+        const oldSrc = item.audio.src;
+        // Strip old cache-buster and add fresh one
+        const baseUrl = oldSrc.replace(/[?&]_=\d+/, '');
+        const freshUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + '_=' + Date.now();
+        item.audio = new Audio(freshUrl);
+      }
+
       if (item.audio.readyState >= 2) {
         item.audio.currentTime = 0;
         item.audio.play().catch(e => {
@@ -1758,7 +1767,15 @@
         const onErr = () => {
           item.audio.removeEventListener('canplay', onReady);
           item.audio.removeEventListener('error', onErr);
-          trackStatus.textContent = `Load failed: ${item.audio.error?.message || 'unknown'} | src:${item.audio.src.slice(-40)}`;
+          const code = item.audio.error?.code;
+          const codes = {1:'ABORTED',2:'NETWORK',3:'DECODE',4:'SRC_NOT_SUPPORTED'};
+          // Fetch the URL to get HTTP status for diagnosis
+          const fileName = item.audio.src.split('/').pop().split('?')[0];
+          fetch(item.audio.src, {method:'HEAD'}).then(r => {
+            trackStatus.textContent = `Load err: ${codes[code]||code} HTTP:${r.status} | ${fileName}`;
+          }).catch(() => {
+            trackStatus.textContent = `Load err: ${codes[code]||code} | ${fileName}`;
+          });
         };
         item.audio.addEventListener('canplay', onReady);
         item.audio.addEventListener('error', onErr);
