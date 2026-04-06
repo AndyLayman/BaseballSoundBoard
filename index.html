@@ -620,6 +620,7 @@
       animation: gradientShift 3s ease-in-out infinite;
       transition: width 0.1s linear; width: 0%;
     }
+    #progress-bar.paused { animation-play-state: paused; }
     @keyframes gradientShift {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
@@ -1930,6 +1931,7 @@
 
     function updateNowPlaying() {
       renderQueue();
+      progressBar.classList.toggle('paused', !isPlaying);
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
         trackName.textContent = playQueue[queueIndex].label || playQueue[queueIndex].name;
         trackStatus.textContent = isPlaying ? 'Now playing' : 'Paused';
