@@ -880,7 +880,7 @@
     }
 
     function makeAudio(url) {
-      const a = new Audio(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now());
+      const a = new Audio(url);
       return a;
     }
 
@@ -910,6 +910,7 @@
         xhr.setRequestHeader('apikey', SUPABASE_KEY);
         xhr.setRequestHeader('x-upsert', 'true');
         xhr.setRequestHeader('Cache-Control', 'no-cache');
+        if (file.type) xhr.setRequestHeader('Content-Type', file.type);
         xhr.send(file);
       });
     }
@@ -1740,11 +1741,8 @@
       });
       // If audio is in error state or never loaded, create a fresh element
       if (item.audio.error || item.audio.readyState === 0) {
-        const oldSrc = item.audio.src;
-        // Strip old cache-buster and add fresh one
-        const baseUrl = oldSrc.replace(/[?&]_=\d+/, '');
-        const freshUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + '_=' + Date.now();
-        item.audio = new Audio(freshUrl);
+        const src = item.audio.src;
+        item.audio = new Audio(src);
       }
 
       if (item.audio.readyState >= 2) {
