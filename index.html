@@ -1055,6 +1055,8 @@
     let playQueue = [];
     let queueIndex = -1;
     let isPlaying = false;
+    const FADE_MS = 800; // fade duration in ms
+    let fadeInterval = null;
 
     // ---- DOM refs ----
     const sfxDrop = document.getElementById('sfx-drop');
@@ -1710,19 +1712,70 @@
       renderQueue();
     }
 
+    function fadeOut(audio, cb) {
+      if (fadeInterval) clearInterval(fadeInterval);
+      const steps = 20;
+      const stepTime = FADE_MS / steps;
+      let vol = audio.volume;
+      const dec = vol / steps;
+      fadeInterval = setInterval(() => {
+        vol -= dec;
+        if (vol <= 0.01) {
+          clearInterval(fadeInterval);
+          fadeInterval = null;
+          audio.volume = 0;
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = 1;
+          if (cb) cb();
+        } else {
+          audio.volume = vol;
+        }
+      }, stepTime);
+    }
+
+    function fadeIn(audio) {
+      audio.volume = 0;
+      const steps = 20;
+      const stepTime = FADE_MS / steps;
+      const inc = 1 / steps;
+      let vol = 0;
+      const fi = setInterval(() => {
+        vol += inc;
+        if (vol >= 1) {
+          clearInterval(fi);
+          audio.volume = 1;
+        } else {
+          audio.volume = vol;
+        }
+      }, stepTime);
+    }
+
     function playFromQueue(queue) {
-      // Stop current audio
-      if (queueIndex >= 0 && queueIndex < playQueue.length) {
+      // Fade out current audio if playing, then start new queue
+      if (queueIndex >= 0 && queueIndex < playQueue.length && isPlaying) {
         const audio = playQueue[queueIndex].audio;
-        audio.pause();
-        audio.currentTime = 0;
+        fadeOut(audio, () => {
+          clearButtonPlaying();
+          playQueue = queue;
+          queueIndex = 0;
+          isPlaying = false;
+          playCurrentInQueue();
+          renderQueue();
+        });
+      } else {
+        if (queueIndex >= 0 && queueIndex < playQueue.length) {
+          const audio = playQueue[queueIndex].audio;
+          audio.pause();
+          audio.currentTime = 0;
+        }
+        clearButtonPlaying();
+        playQueue = queue;
+        queueIndex = 0;
+        isPlaying = false;
+        playCurrentInQueue();
+        renderQueue();
       }
-      clearButtonPlaying();
-      playQueue = queue;
-      queueIndex = 0;
-      isPlaying = false;
-      playCurrentInQueue();
-      renderQueue();
     }
 
     function playCurrentInQueue() {
@@ -1747,7 +1800,7 @@
 
       if (item.audio.readyState >= 2) {
         item.audio.currentTime = 0;
-        item.audio.play().catch(e => {
+        item.audio.play().then(() => fadeIn(item.audio)).catch(e => {
           trackStatus.textContent = `ERR: ${e.message}`;
         });
       } else {
@@ -1758,7 +1811,7 @@
           item.audio.removeEventListener('canplay', onReady);
           item.audio.removeEventListener('error', onErr);
           item.audio.currentTime = 0;
-          item.audio.play().catch(e => {
+          item.audio.play().then(() => fadeIn(item.audio)).catch(e => {
             trackStatus.textContent = `ERR: ${e.message}`;
           });
         };
@@ -1795,9 +1848,18 @@
     }
 
     function stopAll(clearQueue) {
+      if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
       clearButtonPlaying();
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
         const audio = playQueue[queueIndex].audio;
+        if (isPlaying && !audio.paused) {
+          fadeOut(audio, () => {
+            isPlaying = false;
+            if (clearQueue) { playQueue = []; queueIndex = -1; }
+            updateNowPlaying();
+          });
+          return;
+        }
         audio.pause();
         audio.currentTime = 0;
       }
@@ -1824,9 +1886,10 @@
 
     function skipNext() {
       if (playQueue.length === 0) return;
+      if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
-        playQueue[queueIndex].audio.pause();
-        playQueue[queueIndex].audio.currentTime = 0;
+        const a = playQueue[queueIndex].audio;
+        a.pause(); a.currentTime = 0; a.volume = 1;
       }
       queueIndex++;
       if (queueIndex < playQueue.length) {
@@ -1839,9 +1902,10 @@
 
     function skipPrev() {
       if (playQueue.length === 0) return;
+      if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
-        playQueue[queueIndex].audio.pause();
-        playQueue[queueIndex].audio.currentTime = 0;
+        const a = playQueue[queueIndex].audio;
+        a.pause(); a.currentTime = 0; a.volume = 1;
       }
       queueIndex = Math.max(0, queueIndex - 1);
       playCurrentInQueue();
