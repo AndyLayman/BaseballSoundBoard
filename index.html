@@ -879,6 +879,12 @@
       return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
     }
 
+    async function signedStorageUrl(path) {
+      const { data, error } = await sb.storage.from(STORAGE_BUCKET).createSignedUrl(path, 86400);
+      if (error) { console.error('Signed URL error:', path, error); return storageUrl(path); }
+      return data.signedUrl;
+    }
+
     function makeAudio(url) {
       const a = new Audio(url);
       return a;
@@ -1010,7 +1016,7 @@
       const { data: soundRows } = await sb.from('sounds').select('*').order('sort_order');
       if (soundRows) {
         for (const s of soundRows) {
-          const url = storageUrl(`sfx-${s.id}`);
+          const url = await signedStorageUrl(`sfx-${s.id}`);
           const entry = { id: s.id, fileName: s.file_name, label: s.label, url, audio: makeAudio(url) };
           sounds.push(entry);
           renderSfxItem(entry);
@@ -1032,7 +1038,7 @@
           if (p.photo_file) player.photoUrl = storageUrl(`player-${p.id}-photo`) + '?t=' + Date.now();
           for (const type of ['intro', 'song', 'combo']) {
             if (p[type + '_file']) {
-              const fileUrl = storageUrl(`player-${p.id}-${type}`);
+              const fileUrl = await signedStorageUrl(`player-${p.id}-${type}`);
               player[type + 'Url'] = fileUrl;
               player[type + 'Audio'] = makeAudio(fileUrl);
             }
@@ -1186,7 +1192,7 @@
       const { error } = await sb.from('library').insert({ id, title, artist, category, file_name: file.name, sort_order: librarySongs.length });
       if (error) { console.error('Save song error:', error); saveBtn.disabled = false; saveBtn.textContent = 'Upload'; return alert('Save failed: ' + error.message); }
 
-      const url = storageUrl(`library-${id}`);
+      const url = await signedStorageUrl(`library-${id}`);
       librarySongs.push({ id, title, artist, category, fileName: file.name, url, audio: makeAudio(url) });
       renderLibrary();
       addSongModal.classList.remove('visible');
@@ -1323,10 +1329,10 @@
       const { data, error } = await sb.from('library').select('*').order('sort_order');
       if (error) { console.error('Load library error:', error); return; }
       if (data) {
-        data.forEach(s => {
-          const url = storageUrl(`library-${s.id}`);
+        for (const s of data) {
+          const url = await signedStorageUrl(`library-${s.id}`);
           librarySongs.push({ id: s.id, title: s.title, artist: s.artist || '', category: s.category || 'other', fileName: s.file_name, url, audio: makeAudio(url) });
-        });
+        }
       }
     }
 
@@ -1350,7 +1356,7 @@
         }).select().single();
         if (error || !data) { console.error('Insert sound error:', error); continue; }
         await uploadFile(`sfx-${data.id}`, file);
-        const url = storageUrl(`sfx-${data.id}`);
+        const url = await signedStorageUrl(`sfx-${data.id}`);
         const entry = { id: data.id, fileName: data.file_name, label: data.label, url, audio: makeAudio(url) };
         sounds.push(entry);
         renderSfxItem(entry);
@@ -1528,7 +1534,7 @@
           const ok = await uploadFile(`player-${p.id}-intro`, file, onProgress);
           endProgress(introProgress, introStatus, ok);
           if (ok) {
-            p.introUrl = storageUrl(`player-${p.id}-intro`);
+            p.introUrl = await signedStorageUrl(`player-${p.id}-intro`);
             p.introAudio = makeAudio(p.introUrl);
             renderRoster();
             await savePlayerToDB(p);
@@ -1547,7 +1553,7 @@
           const ok = await uploadFile(`player-${p.id}-song`, file, onProgress);
           endProgress(songProgress, songStatus, ok);
           if (ok) {
-            p.songUrl = storageUrl(`player-${p.id}-song`);
+            p.songUrl = await signedStorageUrl(`player-${p.id}-song`);
             p.songAudio = makeAudio(p.songUrl);
             renderRoster();
             await savePlayerToDB(p);
@@ -1566,7 +1572,7 @@
           const ok = await uploadFile(`player-${p.id}-combo`, file, onProgress);
           endProgress(comboProgress, comboStatus, ok);
           if (ok) {
-            p.comboUrl = storageUrl(`player-${p.id}-combo`);
+            p.comboUrl = await signedStorageUrl(`player-${p.id}-combo`);
             p.comboAudio = makeAudio(p.comboUrl);
             renderRoster();
             await savePlayerToDB(p);
