@@ -2057,6 +2057,7 @@
         if (p.songAudio) allAudio.push(p.songAudio);
         if (p.comboAudio) allAudio.push(p.comboAudio);
       });
+      librarySongs.forEach(s => allAudio.push(s.audio));
       const progressEl = document.getElementById('load-progress');
       let loaded = 0;
       const total = allAudio.length;
