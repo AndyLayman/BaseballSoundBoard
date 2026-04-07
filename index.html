@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="Soundboard">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
   <title>Soundboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2081,6 +2082,20 @@
       renderPlayPage();
       lucide.createIcons();
     })();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated') {
+              console.log('Service worker updated — offline support ready');
+            }
+          });
+        });
+      }).catch(err => console.error('SW registration failed:', err));
+    }
   </script>
 </body>
 </html>
