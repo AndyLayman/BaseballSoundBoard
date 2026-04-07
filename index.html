@@ -1057,11 +1057,26 @@
 
     // ---- Load all data ----
     async function loadAllData() {
+      // List actual storage files to handle naming variations (some files have extensions, some don't)
+      const { data: storageFiles } = await sb.storage.from(STORAGE_BUCKET).list('', { limit: 1000 });
+      const storageFileNames = new Set((storageFiles || []).map(f => f.name));
+
+      // Find the correct storage path — checks extensionless first, then with original file extension
+      function resolveStoragePath(basePath, originalFileName) {
+        if (storageFileNames.has(basePath)) return basePath;
+        if (originalFileName) {
+          const ext = (originalFileName.match(/\.[^.]+$/) || [''])[0];
+          if (ext && storageFileNames.has(basePath + ext)) return basePath + ext;
+        }
+        return basePath; // fallback to extensionless
+      }
+
       // Load sounds
       const { data: soundRows } = await sb.from('sounds').select('*').order('sort_order');
       if (soundRows) {
         for (const s of soundRows) {
-          const url = await signedStorageUrl(`sfx-${s.id}`);
+          const path = resolveStoragePath(`sfx-${s.id}`, s.file_name);
+          const url = await signedStorageUrl(path);
           const entry = { id: s.id, fileName: s.file_name, label: s.label, url, audio: makeAudio(url) };
           sounds.push(entry);
           renderSfxItem(entry);
@@ -1083,7 +1098,8 @@
           if (p.photo_file) player.photoUrl = storageUrl(`player-${p.id}-photo`) + '?t=' + Date.now();
           for (const type of ['intro', 'song', 'combo']) {
             if (p[type + '_file']) {
-              const fileUrl = await signedStorageUrl(`player-${p.id}-${type}`);
+              const storagePath = resolveStoragePath(`player-${p.id}-${type}`, p[type + '_file']);
+              const fileUrl = await signedStorageUrl(storagePath);
               player[type + 'Url'] = fileUrl;
               player[type + 'Audio'] = makeAudio(fileUrl);
             }
