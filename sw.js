@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v5';
 const APP_CACHE = `app-shell-${CACHE_VERSION}`;
 const AUDIO_CACHE = `audio-${CACHE_VERSION}`;
 
@@ -9,7 +9,7 @@ const APP_SHELL = [
   '/apple-touch-icon.png',
   '/favicon.png',
   'https://fonts.googleapis.com/css2?family=Montserrat:wght@300&display=swap',
-  'https://unpkg.com/lucide@latest/dist/umd/lucide.min.js',
+  'https://cdn.jsdelivr.net/npm/iconoir@7/css/iconoir.css',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
 ];
 
