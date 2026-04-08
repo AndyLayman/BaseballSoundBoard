@@ -933,15 +933,7 @@
     }
 
     function makeAudio(url) {
-      // Fetch as blob to guarantee correct MIME type regardless of server headers
-      const a = new Audio();
-      fetch(url).then(r => r.blob()).then(blob => {
-        const audioBlob = new Blob([blob], { type: 'audio/mpeg' });
-        a.src = URL.createObjectURL(audioBlob);
-      }).catch(() => {
-        // Fallback to direct URL if fetch fails
-        a.src = url;
-      });
+      const a = new Audio(url);
       return a;
     }
 
@@ -1085,14 +1077,14 @@
       const { data: storageFiles } = await sb.storage.from(STORAGE_BUCKET).list('', { limit: 1000 });
       const storageFileNames = new Set((storageFiles || []).map(f => f.name));
 
-      // Find the correct storage path — checks extensionless first, then with original file extension
+      // Find the correct storage path — prefers files with extension, falls back to extensionless
       function resolveStoragePath(basePath, originalFileName) {
-        if (storageFileNames.has(basePath)) return basePath;
         if (originalFileName) {
           const ext = (originalFileName.match(/\.[^.]+$/) || [''])[0];
           if (ext && storageFileNames.has(basePath + ext)) return basePath + ext;
         }
-        return basePath; // fallback to extensionless
+        if (storageFileNames.has(basePath)) return basePath;
+        return basePath;
       }
 
       // Load sounds
