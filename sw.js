@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v15';
+const CACHE_VERSION = 'v16';
 const APP_CACHE = `app-shell-${CACHE_VERSION}`;
 const AUDIO_CACHE = `audio-${CACHE_VERSION}`;
 
@@ -72,7 +72,23 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // App shell & static assets — cache first, network fallback
+  // Navigation (HTML pages) — network first so code updates take effect immediately
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        const clone = response.clone();
+        caches.open(APP_CACHE).then(cache => cache.put(event.request, clone));
+        return response;
+      }).catch(() =>
+        caches.match('/index.html').then(cached =>
+          cached || new Response('Offline', { status: 503 })
+        )
+      )
+    );
+    return;
+  }
+
+  // Static assets (fonts, icons, JS libs) — cache first, network fallback
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
@@ -82,12 +98,7 @@ self.addEventListener('fetch', event => {
           caches.open(APP_CACHE).then(cache => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
-        return new Response('Offline', { status: 503 });
-      });
+      }).catch(() => new Response('Offline', { status: 503 }));
     })
   );
 });
