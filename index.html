@@ -927,9 +927,8 @@
     }
 
     async function signedStorageUrl(path) {
-      const { data, error } = await sb.storage.from(STORAGE_BUCKET).createSignedUrl(path, 86400);
-      if (error) { console.error('Signed URL error:', path, error); return storageUrl(path); }
-      return data.signedUrl;
+      // Bucket is public — use direct public URL (more reliable than signed URLs)
+      return storageUrl(path);
     }
 
     function makeAudio(url) {
