@@ -641,6 +641,7 @@
       width: 50px; height: 50px; color: var(--clay);
     }
     #now-playing .controls .play-pause:hover { border-color: var(--clay); }
+    #now-playing .controls button.active { color: var(--clay); border-color: var(--clay); }
     #now-playing .stop-btn {
       background: var(--bg-deep) !important;
       border: 1px solid var(--gray-700) !important;
@@ -698,9 +699,13 @@
 
       #now-playing { padding: 10px 12px; gap: 10px; min-height: 64px; }
       #now-playing .track-name { font-size: var(--text-sm); }
-      #now-playing .controls { gap: 6px; }
-      #now-playing .controls button { width: 36px; height: 36px; }
-      #now-playing .controls .play-pause { width: 42px; height: 42px; }
+      #now-playing .controls { gap: 4px; }
+      #now-playing .controls button { width: 34px; height: 34px; }
+      #now-playing .controls .play-pause { width: 40px; height: 40px; }
+      #now-playing .controls #shuffle-btn,
+      #now-playing .controls #repeat-btn { width: 30px; height: 30px; }
+      #now-playing .controls #shuffle-btn i,
+      #now-playing .controls #repeat-btn i { font-size: 13px !important; }
 
       .section-title { font-size: var(--text-base); margin: var(--sp-3) 0 var(--sp-2); }
 
@@ -859,9 +864,11 @@
     <div class="time-display" id="time-display">0:00 / 0:00</div>
     <div class="controls">
       <button class="stop-btn" id="stop-btn" title="Stop"><i class="iconoir-square" style="font-size:16px;"></i></button>
+      <button id="shuffle-btn" title="Shuffle"><i class="iconoir-shuffle" style="font-size:16px;"></i></button>
       <button id="prev-btn" title="Previous"><i class="iconoir-skip-prev" style="font-size:16px;"></i></button>
       <button id="play-pause-btn" class="play-pause" title="Play/Pause"><i class="iconoir-play" style="font-size:20px;"></i></button>
       <button id="next-btn" title="Next"><i class="iconoir-skip-next" style="font-size:16px;"></i></button>
+      <button id="repeat-btn" title="Repeat"><i class="iconoir-repeat" style="font-size:16px;"></i></button>
     </div>
   </div>
 
@@ -1171,6 +1178,8 @@
     let isPlaying = false;
     const FADE_MS = 800; // fade duration in ms
     let fadeInterval = null;
+    let isShuffle = false;       // shuffle mode
+    let repeatMode = 'off';      // 'off' | 'all' | 'one'
 
     // ---- Wake Lock (keep screen on while playing) ----
     let wakeLock = null;
@@ -1281,6 +1290,12 @@
     document.getElementById('play-all-btn').addEventListener('click', () => {
       if (librarySongs.length === 0) return;
       const queue = librarySongs.map(s => ({ audio: s.audio, name: s.title }));
+      if (isShuffle) {
+        for (let i = queue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+        }
+      }
       playFromQueue(queue);
     });
 
@@ -1995,8 +2010,27 @@
       updateNowPlaying();
 
       item.audio.onended = () => {
-        queueIndex++;
-        if (queueIndex < playQueue.length) {
+        if (repeatMode === 'one') {
+          item.audio.currentTime = 0;
+          item.audio.play().then(() => fadeIn(item.audio)).catch(() => {});
+          return;
+        }
+        advanceQueue();
+      };
+      updateMediaSession();
+    }
+
+    function advanceQueue() {
+      const nextIdx = queueIndex + 1;
+      if (nextIdx >= playQueue.length) {
+        if (repeatMode === 'all' && playQueue.length > 0) {
+          queueIndex = 0;
+          if (isShuffle) shuffleRemaining(0);
+          playCurrentInQueue();
+        } else if (isShuffle && playQueue.length > 0) {
+          // Shuffle keeps playing indefinitely — loop back
+          queueIndex = 0;
+          shuffleRemaining(0);
           playCurrentInQueue();
         } else {
           clearButtonPlaying();
@@ -2004,8 +2038,19 @@
           releaseWakeLock();
           updateNowPlaying();
         }
-      };
-      updateMediaSession();
+        return;
+      }
+      if (isShuffle) shuffleRemaining(nextIdx);
+      queueIndex = nextIdx;
+      playCurrentInQueue();
+    }
+
+    // Fisher-Yates shuffle from startIdx to end of queue
+    function shuffleRemaining(startIdx) {
+      for (let i = playQueue.length - 1; i > startIdx; i--) {
+        const j = startIdx + Math.floor(Math.random() * (i - startIdx + 1));
+        [playQueue[i], playQueue[j]] = [playQueue[j], playQueue[i]];
+      }
     }
 
     function stopAll(clearQueue) {
@@ -2060,13 +2105,7 @@
         const a = playQueue[queueIndex].audio;
         a.pause(); a.currentTime = 0; a.volume = 1;
       }
-      queueIndex++;
-      if (queueIndex < playQueue.length) {
-        playCurrentInQueue();
-      } else {
-        isPlaying = false;
-        updateNowPlaying();
-      }
+      advanceQueue();
     }
 
     function skipPrev() {
@@ -2084,6 +2123,27 @@
     document.getElementById('next-btn').addEventListener('click', skipNext);
     document.getElementById('prev-btn').addEventListener('click', skipPrev);
     document.getElementById('stop-btn').addEventListener('click', () => stopAll());
+
+    document.getElementById('shuffle-btn').addEventListener('click', () => {
+      isShuffle = !isShuffle;
+      document.getElementById('shuffle-btn').classList.toggle('active', isShuffle);
+    });
+
+    document.getElementById('repeat-btn').addEventListener('click', () => {
+      const btn = document.getElementById('repeat-btn');
+      if (repeatMode === 'off') {
+        repeatMode = 'all';
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="iconoir-repeat" style="font-size:16px;"></i>';
+      } else if (repeatMode === 'all') {
+        repeatMode = 'one';
+        btn.innerHTML = '<i class="iconoir-repeat-once" style="font-size:16px;"></i>';
+      } else {
+        repeatMode = 'off';
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="iconoir-repeat" style="font-size:16px;"></i>';
+      }
+    });
 
     function updateNowPlaying() {
       renderQueue();
@@ -2118,13 +2178,11 @@
         }
         // Fallback auto-advance: if track ended but onended didn't fire (iOS bg suspension)
         if (audio.ended && isPlaying) {
-          queueIndex++;
-          if (queueIndex < playQueue.length) {
-            playCurrentInQueue();
+          if (repeatMode === 'one') {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
           } else {
-            clearButtonPlaying();
-            isPlaying = false;
-            updateNowPlaying();
+            advanceQueue();
           }
         }
       } else {
@@ -2137,13 +2195,11 @@
       if (document.visibilityState === 'visible' && isPlaying && queueIndex >= 0 && queueIndex < playQueue.length) {
         const audio = playQueue[queueIndex].audio;
         if (audio.ended) {
-          queueIndex++;
-          if (queueIndex < playQueue.length) {
-            playCurrentInQueue();
+          if (repeatMode === 'one') {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
           } else {
-            clearButtonPlaying();
-            isPlaying = false;
-            updateNowPlaying();
+            advanceQueue();
           }
         }
       }
