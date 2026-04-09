@@ -97,6 +97,27 @@
       --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
+    /* Light mode overrides */
+    body.light {
+      --bg: #F7F7F7;
+      --bg-deep: #EBEBEB;
+      --bg-card: #FFFFFF;
+      --bg-input: #EBEBEB;
+      --text: #111111;
+      --text-muted: #5A5A5A;
+      --text-dim: #8A8A8A;
+      --text-sub: #3A3A3A;
+      --border: #D4D4D4;
+      --border-light: #D4D4D4;
+      --accent: #574F3D;
+      --accent-hover: #3E382C;
+      --accent-on: #F7F7F7;
+      --white: #111111;
+      --black: #F7F7F7;
+      --clay: #574F3D;
+      --dirt: #E9D7B4;
+    }
+
     /* Border utility classes */
     .grad-border {
       background: var(--bg-input);
@@ -701,9 +722,9 @@
   </div>
 
   <header style="background:var(--bg-deep);text-align:center;padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;border-bottom:1px solid var(--border);">
-    <img src="logos/Sound-White.svg" alt="Sound" style="height:24px;width:auto;">
+    <img id="header-logo" src="logos/Sound-White.svg" alt="Sound" style="height:24px;width:auto;">
     <button class="settings-toggle" id="settings-toggle" title="Settings"><i class="iconoir-settings" style="font-size:18px;"></i></button>
-    <button class="theme-toggle" id="theme-toggle" style="display:none;" title="Toggle light/dark mode"><i class="iconoir-sun-light" style="font-size:18px;"></i></button>
+    <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode"><i class="iconoir-sun-light" style="font-size:18px;"></i></button>
   </header>
 
   <nav id="settings-nav">
@@ -2118,9 +2139,12 @@
       updateThemeIcon();
     });
     function updateThemeIcon() {
-      themeBtn.innerHTML = document.body.classList.contains('light')
+      const isLight = document.body.classList.contains('light');
+      themeBtn.innerHTML = isLight
         ? '<i class="iconoir-half-moon" style="font-size:18px;"></i>'
         : '<i class="iconoir-sun-light" style="font-size:18px;"></i>';
+      const headerLogo = document.getElementById('header-logo');
+      if (headerLogo) headerLogo.src = isLight ? 'logos/Sound-Black.svg' : 'logos/Sound-White.svg';
     }
 
     // ---- Preload ----
