@@ -1343,8 +1343,12 @@
     });
 
     async function deleteLibrarySong(id) {
+      const song = librarySongs.find(s => s.id === id);
+      const ext = song && song.fileName ? fileExt(song.fileName) : '';
       await sb.from('library').delete().eq('id', id);
-      await deleteFile(`library-${id}`);
+      // Try deleting both with and without extension
+      await deleteFile(`library-${id}${ext}`);
+      if (ext) await deleteFile(`library-${id}`);
       const idx = librarySongs.findIndex(s => s.id === id);
       if (idx !== -1) librarySongs.splice(idx, 1);
       renderLibrary();
@@ -1470,8 +1474,20 @@
       const { data, error } = await sb.from('library').select('*').order('sort_order');
       if (error) { console.error('Load library error:', error); return; }
       if (data) {
+        // List storage files to resolve paths with extensions
+        const { data: storageFiles } = await sb.storage.from(STORAGE_BUCKET).list('', { limit: 1000 });
+        const storageFileNames = new Set((storageFiles || []).map(f => f.name));
+        function resolveLibPath(basePath, originalFileName) {
+          if (originalFileName) {
+            const ext = (originalFileName.match(/\.[^.]+$/) || [''])[0];
+            if (ext && storageFileNames.has(basePath + ext)) return basePath + ext;
+          }
+          if (storageFileNames.has(basePath)) return basePath;
+          return basePath;
+        }
         for (const s of data) {
-          const url = await signedStorageUrl(`library-${s.id}`);
+          const path = resolveLibPath(`library-${s.id}`, s.file_name);
+          const url = await signedStorageUrl(path);
           librarySongs.push({ id: s.id, title: s.title, artist: s.artist || '', category: s.category || 'other', fileName: s.file_name, url, audio: makeAudio(url) });
         }
       }
