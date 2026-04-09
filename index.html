@@ -569,6 +569,33 @@
     .lineup-card .lc-btn:disabled { opacity: 0.2; cursor: not-allowed; }
     .lineup-card.active { border-color: var(--clay); }
 
+    /* --- Live Batter Banner --- */
+    #live-batter-banner {
+      display: none; margin-bottom: var(--sp-3);
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-2);
+      padding: var(--sp-3); gap: var(--sp-3);
+    }
+    #live-batter-banner.visible { display: flex; align-items: center; }
+    #live-batter-banner .batter-slot { flex: 1; display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+    #live-batter-banner .batter-tag {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+      padding: 2px 6px; border-radius: var(--r-1); white-space: nowrap; flex-shrink: 0;
+    }
+    #live-batter-banner .batter-tag.at-bat { background: var(--clay); color: var(--black); }
+    #live-batter-banner .batter-tag.on-deck { background: var(--gray-700); color: var(--text-muted); }
+    #live-batter-banner .batter-tag.defense { background: var(--gray-700); color: var(--text-muted); }
+    #live-batter-banner .batter-name {
+      font-size: var(--text-sm); font-weight: 500; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #live-batter-banner .batter-number {
+      font-size: var(--text-xs); font-weight: 700; color: var(--clay);
+      flex-shrink: 0;
+    }
+    #live-batter-banner .divider { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; }
+    .lineup-card.at-bat { border-color: var(--clay); outline: 2px solid var(--clay); outline-offset: -2px; }
+    .lineup-card.on-deck { border-color: var(--gray-600); }
+
     /* --- Loading Overlay --- */
     #loading-overlay {
       position: fixed; inset: 0; background: var(--bg); z-index: 999;
@@ -776,6 +803,19 @@
 
       <div class="lineup-section">
         <div class="section-title">Lineup</div>
+        <div id="live-batter-banner">
+          <div class="batter-slot" id="at-bat-slot">
+            <span class="batter-tag at-bat">At Bat</span>
+            <span class="batter-number" id="at-bat-number"></span>
+            <span class="batter-name" id="at-bat-name"></span>
+          </div>
+          <div class="divider"></div>
+          <div class="batter-slot" id="on-deck-slot">
+            <span class="batter-tag on-deck">On Deck</span>
+            <span class="batter-number" id="on-deck-number"></span>
+            <span class="batter-name" id="on-deck-name"></span>
+          </div>
+        </div>
         <div id="lineup-grid" class="lineup-grid"></div>
         <div id="lineup-empty" class="empty-state" style="margin-top:20px;">
           No players yet. <a class="go-roster">Add players on the Roster page</a>.
@@ -1738,6 +1778,7 @@
       activePlayers.forEach(p => {
         const card = document.createElement('div');
         card.className = 'lineup-card';
+        card.dataset.playerId = p.id;
 
         const hasIntro = !!p.introAudio;
         const hasSong = !!p.songAudio;
@@ -1776,6 +1817,7 @@
 
         lineupGrid.appendChild(card);
       });
+      updateBatterDisplay();
     }
 
     // ---- Button Playing State ----
@@ -2186,6 +2228,109 @@
       ]);
     }
 
+    // ---- Live Batter Sync ----
+    let liveState = { gameId: null, lineup: [], currentBatterIndex: 0, currentHalf: 'top', currentInning: 1 };
+    let liveSyncChannel = null;
+
+    async function initLiveSync() {
+      try {
+        // Find the most recently active game
+        const { data: gs } = await sb.from('game_state')
+          .select('game_id, current_batter_index, current_half, current_inning, updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(1);
+        if (!gs || gs.length === 0) return;
+
+        const recent = gs[0];
+        // Only sync if updated within the last 12 hours
+        const age = Date.now() - new Date(recent.updated_at).getTime();
+        if (age > 12 * 60 * 60 * 1000) return;
+
+        liveState.gameId = recent.game_id;
+        liveState.currentBatterIndex = recent.current_batter_index;
+        liveState.currentHalf = recent.current_half;
+        liveState.currentInning = recent.current_inning;
+
+        // Fetch the lineup for this game
+        const { data: lineup } = await sb.from('game_lineup')
+          .select('player_id, batting_order')
+          .eq('game_id', liveState.gameId)
+          .order('batting_order');
+        liveState.lineup = lineup || [];
+
+        updateBatterDisplay();
+
+        // Subscribe to realtime changes
+        liveSyncChannel = sb.channel(`sound-sync-${liveState.gameId}`)
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'game_state',
+            filter: `game_id=eq.${liveState.gameId}`,
+          }, (payload) => {
+            const row = payload.new;
+            liveState.currentBatterIndex = row.current_batter_index;
+            liveState.currentHalf = row.current_half;
+            liveState.currentInning = row.current_inning;
+            updateBatterDisplay();
+          })
+          .subscribe();
+      } catch (err) {
+        console.error('Live sync init failed:', err);
+      }
+    }
+
+    function updateBatterDisplay() {
+      const banner = document.getElementById('live-batter-banner');
+      const atBatSlot = document.getElementById('at-bat-slot');
+      const onDeckSlot = document.getElementById('on-deck-slot');
+
+      // Clear card highlights
+      document.querySelectorAll('.lineup-card.at-bat, .lineup-card.on-deck').forEach(c => {
+        c.classList.remove('at-bat', 'on-deck');
+      });
+
+      if (!liveState.gameId || liveState.lineup.length === 0) {
+        banner.classList.remove('visible');
+        return;
+      }
+
+      const isOurBatting = liveState.currentHalf === 'bottom';
+
+      if (!isOurBatting) {
+        // Opponent batting — show defense mode
+        atBatSlot.innerHTML = `<span class="batter-tag defense">Defense</span><span class="batter-name">Top of ${liveState.currentInning}</span>`;
+        onDeckSlot.style.display = 'none';
+        banner.querySelector('.divider').style.display = 'none';
+        banner.classList.add('visible');
+        return;
+      }
+
+      onDeckSlot.style.display = '';
+      banner.querySelector('.divider').style.display = '';
+
+      const idx = liveState.currentBatterIndex % liveState.lineup.length;
+      const nextIdx = (liveState.currentBatterIndex + 1) % liveState.lineup.length;
+      const atBatEntry = liveState.lineup[idx];
+      const onDeckEntry = liveState.lineup[nextIdx];
+
+      const atBatPlayer = players.find(p => p.id === atBatEntry.player_id);
+      const onDeckPlayer = players.find(p => p.id === onDeckEntry.player_id);
+
+      if (atBatPlayer) {
+        atBatSlot.innerHTML = `<span class="batter-tag at-bat">At Bat</span><span class="batter-number">#${esc(atBatPlayer.number)}</span><span class="batter-name">${esc(atBatPlayer.firstName)} ${esc(atBatPlayer.lastName)}</span>`;
+        const card = document.querySelector(`.lineup-card[data-player-id="${atBatPlayer.id}"]`);
+        if (card) card.classList.add('at-bat');
+      }
+      if (onDeckPlayer) {
+        onDeckSlot.innerHTML = `<span class="batter-tag on-deck">On Deck</span><span class="batter-number">#${esc(onDeckPlayer.number)}</span><span class="batter-name">${esc(onDeckPlayer.firstName)} ${esc(onDeckPlayer.lastName)}</span>`;
+        const card = document.querySelector(`.lineup-card[data-player-id="${onDeckPlayer.id}"]`);
+        if (card) card.classList.add('on-deck');
+      }
+
+      banner.classList.add('visible');
+    }
+
     // ---- Boot ----
     (async () => {
       try {
@@ -2196,6 +2341,7 @@
       }
       document.getElementById('loading-overlay').classList.add('hidden');
       renderPlayPage();
+      initLiveSync();
     })();
   </script>
   <script>
