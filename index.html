@@ -616,19 +616,20 @@
     #now-playing {
       position: fixed; bottom: 0; left: 0; right: 0;
       border-top: 1px solid var(--border);
-      padding: 12px var(--sp-4); display: flex; align-items: center;
-      gap: var(--sp-3); min-height: 72px;
+      padding: 10px var(--sp-4); padding-bottom: calc(10px + env(safe-area-inset-bottom));
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       background: var(--bg-deep);
     }
+    #now-playing .np-row { display: flex; align-items: center; gap: var(--sp-3); }
     #now-playing .track-info { flex: 1; min-width: 0; }
     #now-playing .track-name {
       font-weight: var(--font-weight); font-size: var(--text-base);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    #now-playing .track-meta { display: flex; align-items: center; gap: var(--sp-2); }
     #now-playing .track-status { font-size: var(--text-sm); color: var(--text-dim); }
     #now-playing .time-display { font-size: var(--text-sm); color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
-    #now-playing .controls { display: flex; align-items: center; gap: var(--sp-2); }
+    #now-playing .controls { display: flex; align-items: center; gap: var(--sp-2); shrink: 0; }
     #now-playing .controls button {
       background: var(--bg-deep);
       border: 1px solid var(--border); border-radius: var(--r-full);
@@ -642,14 +643,25 @@
     }
     #now-playing .controls .play-pause:hover { border-color: var(--clay); }
     #now-playing .controls button.active { color: var(--clay); border-color: var(--clay); }
-    #now-playing .stop-btn {
-      background: var(--bg-deep) !important;
-      border: 1px solid var(--gray-700) !important;
+    #now-playing .controls .more-toggle { width: 36px; height: 36px; }
+    #now-playing .controls .more-toggle.open i { transform: rotate(180deg); transition: transform var(--duration-fast) var(--ease-in-out); }
+    #now-playing .controls .more-toggle i { transition: transform var(--duration-fast) var(--ease-in-out); }
+    #now-playing .extra-controls {
+      display: none; position: absolute; bottom: 100%; right: var(--sp-4);
+      background: var(--bg-deep); border: 1px solid var(--border); border-radius: var(--r-2);
+      padding: 6px; gap: 6px; flex-direction: row; align-items: center;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.4);
     }
-    #now-playing .stop-btn:hover {
-      border-color: var(--danger) !important;
-      color: var(--danger) !important;
+    #now-playing .extra-controls.visible { display: flex; }
+    #now-playing .extra-controls button {
+      background: var(--bg-deep);
+      border: 1px solid var(--border); border-radius: var(--r-full);
+      width: 38px; height: 38px; color: var(--text-muted);
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all var(--duration-fast) var(--ease-in-out);
     }
+    #now-playing .extra-controls button:hover { color: var(--clay); border-color: var(--clay); }
+    #now-playing .extra-controls button.active { color: var(--clay); border-color: var(--clay); }
     #progress-bar {
       position: absolute; top: 0; left: 0; height: 2px;
       background: var(--clay);
@@ -697,15 +709,13 @@
       .lineup-card .lc-btn { height: 36px; min-height: 36px; max-height: 36px; }
       .lineup-card .lc-btn-sq { flex: 0 0 36px; width: 36px; }
 
-      #now-playing { padding: 10px 12px; gap: 10px; min-height: 64px; }
+      #now-playing { padding: 8px 12px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+      #now-playing .np-row { gap: 8px; }
       #now-playing .track-name { font-size: var(--text-sm); }
       #now-playing .controls { gap: 4px; }
       #now-playing .controls button { width: 34px; height: 34px; }
       #now-playing .controls .play-pause { width: 40px; height: 40px; }
-      #now-playing .controls #shuffle-btn,
-      #now-playing .controls #repeat-btn { width: 30px; height: 30px; }
-      #now-playing .controls #shuffle-btn i,
-      #now-playing .controls #repeat-btn i { font-size: 13px !important; }
+      #now-playing .controls .more-toggle { width: 28px; height: 28px; }
 
       .section-title { font-size: var(--text-base); margin: var(--sp-3) 0 var(--sp-2); }
 
@@ -741,7 +751,6 @@
       header .settings-toggle, header .theme-toggle {
         top: calc(50% + env(safe-area-inset-top) / 2);
       }
-      #now-playing { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
     }
   </style>
 </head>
@@ -857,17 +866,23 @@
   <!-- Now Playing -->
   <div id="now-playing">
     <div id="progress-bar"></div>
-    <div class="track-info">
-      <div class="track-name" id="track-name">Nothing playing</div>
-      <div class="track-status" id="track-status">Add sounds and tap to play</div>
+    <div class="np-row">
+      <div class="track-info">
+        <div class="track-name" id="track-name">Nothing playing</div>
+        <div class="track-meta">
+          <span class="track-status" id="track-status">Add sounds and tap to play</span>
+          <span class="time-display" id="time-display">0:00 / 0:00</span>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="prev-btn" title="Previous"><i class="iconoir-skip-prev" style="font-size:16px;"></i></button>
+        <button id="play-pause-btn" class="play-pause" title="Play/Pause"><i class="iconoir-play" style="font-size:20px;"></i></button>
+        <button id="next-btn" title="Next"><i class="iconoir-skip-next" style="font-size:16px;"></i></button>
+        <button id="more-controls-btn" class="more-toggle" title="More"><i class="iconoir-nav-arrow-up" style="font-size:14px;"></i></button>
+      </div>
     </div>
-    <div class="time-display" id="time-display">0:00 / 0:00</div>
-    <div class="controls">
-      <button class="stop-btn" id="stop-btn" title="Stop"><i class="iconoir-square" style="font-size:16px;"></i></button>
+    <div class="extra-controls" id="extra-controls">
       <button id="shuffle-btn" title="Shuffle"><i class="iconoir-shuffle" style="font-size:16px;"></i></button>
-      <button id="prev-btn" title="Previous"><i class="iconoir-skip-prev" style="font-size:16px;"></i></button>
-      <button id="play-pause-btn" class="play-pause" title="Play/Pause"><i class="iconoir-play" style="font-size:20px;"></i></button>
-      <button id="next-btn" title="Next"><i class="iconoir-skip-next" style="font-size:16px;"></i></button>
       <button id="repeat-btn" title="Repeat"><i class="iconoir-repeat" style="font-size:16px;"></i></button>
     </div>
   </div>
@@ -1981,17 +1996,40 @@
           q.audio.currentTime = 0;
         }
       });
-      // If audio is in error state or never loaded, create a fresh element
-      if (item.audio.error || item.audio.readyState === 0) {
+      // Only recreate on actual error — not readyState 0 (just unloaded)
+      if (item.audio.error) {
         const src = item.audio.src;
         item.audio = makeAudio(src);
       }
 
-      if (item.audio.readyState >= 2) {
+      function attemptPlay() {
         item.audio.currentTime = 0;
         item.audio.play().then(() => fadeIn(item.audio)).catch(e => {
+          if (e.name === 'NotAllowedError') {
+            // Autoplay blocked — show tap-to-resume prompt
+            trackStatus.textContent = 'Tap play to continue';
+            isPlaying = false;
+            updateNowPlaying();
+            // Swap default handler for a one-shot resume
+            playPauseBtn.removeEventListener('click', togglePlayPause);
+            playPauseBtn.addEventListener('click', function resumeHandler() {
+              playPauseBtn.removeEventListener('click', resumeHandler);
+              playPauseBtn.addEventListener('click', togglePlayPause);
+              item.audio.play().then(() => {
+                fadeIn(item.audio);
+                isPlaying = true;
+                requestWakeLock();
+                updateNowPlaying();
+              }).catch(() => {});
+            });
+            return;
+          }
           trackStatus.textContent = `ERR: ${e.message}`;
         });
+      }
+
+      if (item.audio.readyState >= 2) {
+        attemptPlay();
       } else {
         // Audio not loaded yet — wait for it
         trackStatus.textContent = 'Loading audio...';
@@ -1999,10 +2037,7 @@
         const onReady = () => {
           item.audio.removeEventListener('canplay', onReady);
           item.audio.removeEventListener('error', onErr);
-          item.audio.currentTime = 0;
-          item.audio.play().then(() => fadeIn(item.audio)).catch(e => {
-            trackStatus.textContent = `ERR: ${e.message}`;
-          });
+          attemptPlay();
         };
         const onErr = () => {
           item.audio.removeEventListener('canplay', onReady);
@@ -2024,6 +2059,12 @@
       requestWakeLock();
       setButtonPlaying(item.btn || null);
       updateNowPlaying();
+
+      // Preload next track so it's ready when this one ends
+      const nextIdx = queueIndex + 1;
+      if (nextIdx < playQueue.length && playQueue[nextIdx].audio.readyState < 2) {
+        playQueue[nextIdx].audio.load();
+      }
 
       item.audio.onended = () => {
         if (repeatMode === 'one') {
@@ -2138,7 +2179,21 @@
     playPauseBtn.addEventListener('click', togglePlayPause);
     document.getElementById('next-btn').addEventListener('click', skipNext);
     document.getElementById('prev-btn').addEventListener('click', skipPrev);
-    document.getElementById('stop-btn').addEventListener('click', () => stopAll());
+
+    // More controls (shuffle/repeat) toggle
+    const moreBtn = document.getElementById('more-controls-btn');
+    const extraControls = document.getElementById('extra-controls');
+    moreBtn.addEventListener('click', () => {
+      extraControls.classList.toggle('visible');
+      moreBtn.classList.toggle('open');
+    });
+    // Close extra controls when tapping elsewhere
+    document.addEventListener('click', (e) => {
+      if (!extraControls.contains(e.target) && !moreBtn.contains(e.target)) {
+        extraControls.classList.remove('visible');
+        moreBtn.classList.remove('open');
+      }
+    });
 
     document.getElementById('shuffle-btn').addEventListener('click', () => {
       isShuffle = !isShuffle;
