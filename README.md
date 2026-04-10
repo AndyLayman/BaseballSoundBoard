@@ -40,13 +40,11 @@ A web-based soundboard and walk-up music manager for baseball teams. Upload soun
 - **Backend:** [Supabase](https://supabase.com) (PostgreSQL database + object storage)
 - **Icons:** [Lucide](https://lucide.dev)
 - **Production hosting:** GitHub Pages
-- **Staging previews:** Netlify (branch deploys)
 
 ## Project Structure
 
 ```
 index.html          # Entire app (HTML, CSS, JS)
-netlify.toml        # Netlify staging config
 padres-logo.svg     # Team logo
 apple-touch-icon.png # iOS home screen icon
 .github/workflows/  # GitHub Pages deploy action
@@ -95,11 +93,6 @@ Supabase credentials are configured in `index.html`:
 ### Deployment
 
 **Production:** Pushes to `main` auto-deploy to GitHub Pages via GitHub Actions.
-
-**Staging:** All branches auto-deploy to Netlify for preview. Branch preview URLs follow the format:
-```
-https://<branch-name>--baseballsoundboard.netlify.app
-```
 
 ## Local Development
 
