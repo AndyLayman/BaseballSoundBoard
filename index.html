@@ -1939,7 +1939,10 @@
       renderQueue();
     }
 
+    let fadeInInterval = null;
+
     function fadeOut(audio, cb, { resetTime = true } = {}) {
+      if (fadeInInterval) { clearInterval(fadeInInterval); fadeInInterval = null; }
       if (fadeInterval) clearInterval(fadeInterval);
       const steps = 20;
       const stepTime = FADE_MS / steps;
@@ -1962,15 +1965,18 @@
     }
 
     function fadeIn(audio) {
+      if (fadeInInterval) { clearInterval(fadeInInterval); fadeInInterval = null; }
+      if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
       audio.volume = 0;
       const steps = 20;
       const stepTime = FADE_MS / steps;
       const inc = 1 / steps;
       let vol = 0;
-      const fi = setInterval(() => {
+      fadeInInterval = setInterval(() => {
         vol += inc;
         if (vol >= 1) {
-          clearInterval(fi);
+          clearInterval(fadeInInterval);
+          fadeInInterval = null;
           audio.volume = 1;
         } else {
           audio.volume = vol;
