@@ -2400,47 +2400,84 @@
 
     async function initLiveSync() {
       try {
-        // Find the most recently active game
-        const { data: gs } = await sb.from('game_state')
-          .select('game_id, current_batter_index, current_half, current_inning, updated_at')
-          .order('updated_at', { ascending: false })
+        // First, check for an explicitly in-progress game
+        let gameId = null;
+        const { data: activeGames } = await sb.from('games')
+          .select('id')
+          .eq('status', 'in_progress')
           .limit(1);
-        if (!gs || gs.length === 0) return;
 
-        const recent = gs[0];
-        // Only sync if updated within the last 12 hours
-        const age = Date.now() - new Date(recent.updated_at).getTime();
-        if (age > 12 * 60 * 60 * 1000) return;
+        if (activeGames && activeGames.length > 0) {
+          gameId = activeGames[0].id;
+        } else {
+          // Fallback: find the most recently updated game_state within 12 hours
+          const { data: gs } = await sb.from('game_state')
+            .select('game_id, updated_at')
+            .order('updated_at', { ascending: false })
+            .limit(1);
+          if (gs && gs.length > 0) {
+            const age = Date.now() - new Date(gs[0].updated_at).getTime();
+            if (age <= 12 * 60 * 60 * 1000) {
+              gameId = gs[0].game_id;
+            }
+          }
+        }
 
-        liveState.gameId = recent.game_id;
-        liveState.currentBatterIndex = recent.current_batter_index;
-        liveState.currentHalf = recent.current_half;
-        liveState.currentInning = recent.current_inning;
+        if (!gameId) {
+          // No active game — clear state and hide banner
+          if (liveSyncChannel) { sb.removeChannel(liveSyncChannel); liveSyncChannel = null; }
+          liveState.gameId = null;
+          liveState.lineup = [];
+          updateBatterDisplay();
+          return;
+        }
+
+        // If game changed, tear down old subscription
+        if (liveState.gameId && liveState.gameId !== gameId && liveSyncChannel) {
+          sb.removeChannel(liveSyncChannel);
+          liveSyncChannel = null;
+        }
+
+        // Fetch current game state
+        const { data: stateRow } = await sb.from('game_state')
+          .select('current_batter_index, current_half, current_inning')
+          .eq('game_id', gameId)
+          .single();
+
+        liveState.gameId = gameId;
+        if (stateRow) {
+          liveState.currentBatterIndex = stateRow.current_batter_index;
+          liveState.currentHalf = stateRow.current_half;
+          liveState.currentInning = stateRow.current_inning;
+        }
 
         // Fetch the lineup for this game
         const { data: lineup } = await sb.from('game_lineup')
           .select('player_id, batting_order')
-          .eq('game_id', liveState.gameId)
+          .eq('game_id', gameId)
           .order('batting_order');
         liveState.lineup = lineup || [];
 
         updateBatterDisplay();
 
-        // Subscribe to realtime changes
-        liveSyncChannel = sb.channel(`sound-sync-${liveState.gameId}`)
-          .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'game_state',
-            filter: `game_id=eq.${liveState.gameId}`,
-          }, (payload) => {
-            const row = payload.new;
-            liveState.currentBatterIndex = row.current_batter_index;
-            liveState.currentHalf = row.current_half;
-            liveState.currentInning = row.current_inning;
-            updateBatterDisplay();
-          })
-          .subscribe();
+        // Subscribe to realtime changes (only if not already subscribed to this game)
+        if (!liveSyncChannel || liveState.gameId !== gameId) {
+          if (liveSyncChannel) sb.removeChannel(liveSyncChannel);
+          liveSyncChannel = sb.channel(`sound-sync-${gameId}`)
+            .on('postgres_changes', {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'game_state',
+              filter: `game_id=eq.${gameId}`,
+            }, (payload) => {
+              const row = payload.new;
+              liveState.currentBatterIndex = row.current_batter_index;
+              liveState.currentHalf = row.current_half;
+              liveState.currentInning = row.current_inning;
+              updateBatterDisplay();
+            })
+            .subscribe();
+        }
       } catch (err) {
         console.error('Live sync init failed:', err);
       }
@@ -2496,6 +2533,14 @@
 
       banner.classList.add('visible');
     }
+
+    // Re-sync when tab becomes visible (returning from background)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') initLiveSync();
+    });
+
+    // Poll for active game every 30 seconds as a fallback
+    setInterval(() => { if (!liveState.gameId) initLiveSync(); }, 30000);
 
     // ---- Boot ----
     (async () => {
