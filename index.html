@@ -1197,32 +1197,9 @@
 
     // Single shared audio element for queue playback — avoids autoplay blocking
     const queueAudio = new Audio();
-    queueAudio.crossOrigin = 'anonymous';
 
-    // Web Audio API gain node for volume fading (iOS ignores HTMLMediaElement.volume)
-    let audioCtx = null;
-    let gainNode = null;
-    let audioCtxFailed = false;
-    function ensureAudioCtx() {
-      if (audioCtx || audioCtxFailed) return;
-      try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioCtx.createMediaElementSource(queueAudio);
-        gainNode = audioCtx.createGain();
-        source.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-      } catch(e) {
-        console.warn('Web Audio API failed, falling back to volume:', e);
-        audioCtxFailed = true;
-        audioCtx = null;
-        gainNode = null;
-      }
-    }
-    function getVol() { return gainNode ? gainNode.gain.value : queueAudio.volume; }
-    function setVol(v) {
-      if (gainNode) gainNode.gain.value = v;
-      else queueAudio.volume = v;
-    }
+    function getVol() { return queueAudio.volume; }
+    function setVol(v) { queueAudio.volume = v; }
 
     // ---- Wake Lock (keep screen on while playing) ----
     let wakeLock = null;
@@ -2040,10 +2017,6 @@
       const item = playQueue[queueIndex];
       const src = item.audio ? item.audio.src : item.src;
 
-      // Init Web Audio API on first user-gesture-triggered play
-      ensureAudioCtx();
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-
       // Use the shared queueAudio element — same element = no autoplay block
       // IMPORTANT: do NOT call .load() — it re-locks the autoplay gate on iOS/Safari.
       // Setting .src is enough; the browser loads the new resource automatically.
@@ -2293,9 +2266,6 @@
     // When page wakes from background, resume AudioContext and catch up on ended tracks
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        // Resume AudioContext — iOS suspends it when backgrounded
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-
         if (isPlaying && queueIndex >= 0 && queueIndex < playQueue.length) {
           if (queueAudio.ended) {
             if (repeatMode === 'one') {
