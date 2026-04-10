@@ -1978,12 +1978,16 @@
     }
 
     function playFromQueue(queue) {
-      // Fade out current audio if playing, then start new queue
+      // Preserve upcoming queued items — insert new items and keep the rest
+      const upcoming = (queueIndex >= 0 && queueIndex < playQueue.length)
+        ? playQueue.slice(queueIndex + 1)
+        : [];
+
       if (queueIndex >= 0 && queueIndex < playQueue.length && isPlaying) {
         const audio = playQueue[queueIndex].audio;
         fadeOut(audio, () => {
           clearButtonPlaying();
-          playQueue = queue;
+          playQueue = [...queue, ...upcoming];
           queueIndex = 0;
           isPlaying = false;
           playCurrentInQueue();
@@ -1996,7 +2000,7 @@
           audio.currentTime = 0;
         }
         clearButtonPlaying();
-        playQueue = queue;
+        playQueue = [...queue, ...upcoming];
         queueIndex = 0;
         isPlaying = false;
         playCurrentInQueue();
