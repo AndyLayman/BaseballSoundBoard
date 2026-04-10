@@ -432,9 +432,6 @@
       font-size: var(--text-sm); color: var(--text); white-space: nowrap;
       overflow: hidden; text-overflow: ellipsis;
     }
-    .library-item .song-meta {
-      font-size: var(--text-xs); color: var(--text-dim); margin-top: 2px;
-    }
     .library-item .song-actions { display: flex; gap: var(--sp-2); align-items: center; }
     .library-item .song-actions button {
       background: none; border: 1px solid var(--border); border-radius: var(--r-full);
@@ -443,7 +440,6 @@
       transition: all var(--duration-fast) var(--ease-in-out);
     }
     .library-item .song-actions button:hover { border-color: var(--teal); color: var(--teal); }
-    .library-item .song-actions button.delete-song:hover { border-color: var(--danger); color: var(--danger); }
     .library-item.playing { border-color: var(--clay); }
 
     /* Add Song Modal */
@@ -1410,12 +1406,10 @@
         div.innerHTML = `
           <div class="song-info">
             <div class="song-title">${song.title}</div>
-            <div class="song-meta">${song.artist ? song.artist + ' · ' : ''}${song.category.split(',').map(c => categoryLabels[c.trim()] || c.trim()).join(', ')}</div>
           </div>
           <div class="song-actions">
             <button class="queue-song" title="Add to Queue"><i class="iconoir-playlist-plus" style="font-size:14px;"></i></button>
             <button class="play-song" title="Play"><i class="iconoir-play" style="font-size:14px;"></i></button>
-            <button class="delete-song" title="Delete"><i class="iconoir-trash" style="font-size:14px;"></i></button>
           </div>
         `;
         div.querySelector('.queue-song').addEventListener('click', () => {
@@ -1423,9 +1417,6 @@
         });
         div.querySelector('.play-song').addEventListener('click', () => {
           playFromQueue([{ audio: song.audio, name: song.title }]);
-        });
-        div.querySelector('.delete-song').addEventListener('click', async () => {
-          if (confirm(`Delete "${song.title}"?`)) await deleteLibrarySong(song.id);
         });
         libraryList.appendChild(div);
       });
