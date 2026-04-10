@@ -1196,6 +1196,9 @@
     let isShuffle = false;       // shuffle mode
     let repeatMode = 'off';      // 'off' | 'all' | 'one'
 
+    // Single shared audio element for queue playback — avoids autoplay blocking
+    const queueAudio = new Audio();
+
     // ---- Wake Lock (keep screen on while playing) ----
     let wakeLock = null;
     async function requestWakeLock() {
@@ -1409,10 +1412,8 @@
     const queueListEl = document.getElementById('queue-list');
 
     document.getElementById('clear-queue-btn').addEventListener('click', () => {
-      if (queueIndex >= 0 && queueIndex < playQueue.length) {
-        playQueue[queueIndex].audio.pause();
-        playQueue[queueIndex].audio.currentTime = 0;
-      }
+      queueAudio.pause();
+      queueAudio.currentTime = 0;
       clearButtonPlaying();
       playQueue = []; queueIndex = -1; isPlaying = false;
       updateNowPlaying();
@@ -1473,8 +1474,8 @@
     function removeFromQueue(idx) {
       if (idx === queueIndex) {
         // Removing currently playing — stop it and advance
-        playQueue[idx].audio.pause();
-        playQueue[idx].audio.currentTime = 0;
+        queueAudio.pause();
+        queueAudio.currentTime = 0;
         playQueue.splice(idx, 1);
         if (queueIndex >= playQueue.length) {
           clearButtonPlaying(); isPlaying = false; queueIndex = -1;
@@ -1983,9 +1984,8 @@
         ? playQueue.slice(queueIndex + 1)
         : [];
 
-      if (queueIndex >= 0 && queueIndex < playQueue.length && isPlaying) {
-        const audio = playQueue[queueIndex].audio;
-        fadeOut(audio, () => {
+      if (isPlaying && !queueAudio.paused) {
+        fadeOut(queueAudio, () => {
           clearButtonPlaying();
           playQueue = [...queue, ...upcoming];
           queueIndex = 0;
@@ -1994,11 +1994,8 @@
           renderQueue();
         });
       } else {
-        if (queueIndex >= 0 && queueIndex < playQueue.length) {
-          const audio = playQueue[queueIndex].audio;
-          audio.pause();
-          audio.currentTime = 0;
-        }
+        queueAudio.pause();
+        queueAudio.currentTime = 0;
         clearButtonPlaying();
         playQueue = [...queue, ...upcoming];
         queueIndex = 0;
@@ -2015,34 +2012,27 @@
         return;
       }
       const item = playQueue[queueIndex];
-      // Stop any other playing audio in the queue
-      playQueue.forEach((q, i) => {
-        if (i !== queueIndex && !q.audio.paused) {
-          q.audio.pause();
-          q.audio.currentTime = 0;
-        }
-      });
-      // Only recreate on actual error — not readyState 0 (just unloaded)
-      if (item.audio.error) {
-        const src = item.audio.src;
-        item.audio = makeAudio(src);
-      }
+      const src = item.audio ? item.audio.src : item.src;
+
+      // Use the shared queueAudio element — same element = no autoplay block
+      queueAudio.pause();
+      queueAudio.src = src;
+      queueAudio.currentTime = 0;
+      queueAudio.volume = 0;
+      queueAudio.load();
 
       function attemptPlay() {
-        item.audio.currentTime = 0;
-        item.audio.play().then(() => fadeIn(item.audio)).catch(e => {
+        queueAudio.play().then(() => fadeIn(queueAudio)).catch(e => {
           if (e.name === 'NotAllowedError') {
-            // Autoplay blocked — show tap-to-resume prompt
             trackStatus.textContent = 'Tap play to continue';
             isPlaying = false;
             updateNowPlaying();
-            // Swap default handler for a one-shot resume
             playPauseBtn.removeEventListener('click', togglePlayPause);
             playPauseBtn.addEventListener('click', function resumeHandler() {
               playPauseBtn.removeEventListener('click', resumeHandler);
               playPauseBtn.addEventListener('click', togglePlayPause);
-              item.audio.play().then(() => {
-                fadeIn(item.audio);
+              queueAudio.play().then(() => {
+                fadeIn(queueAudio);
                 isPlaying = true;
                 requestWakeLock();
                 updateNowPlaying();
@@ -2054,54 +2044,46 @@
         });
       }
 
-      if (item.audio.readyState >= 2) {
+      if (queueAudio.readyState >= 2) {
         attemptPlay();
       } else {
-        // Audio not loaded yet — wait for it
         trackStatus.textContent = 'Loading audio...';
-        item.audio.load();
         const onReady = () => {
-          item.audio.removeEventListener('canplay', onReady);
-          item.audio.removeEventListener('error', onErr);
+          queueAudio.removeEventListener('canplay', onReady);
+          queueAudio.removeEventListener('error', onErr);
           attemptPlay();
         };
         const onErr = () => {
-          item.audio.removeEventListener('canplay', onReady);
-          item.audio.removeEventListener('error', onErr);
-          const code = item.audio.error?.code;
+          queueAudio.removeEventListener('canplay', onReady);
+          queueAudio.removeEventListener('error', onErr);
+          const code = queueAudio.error?.code;
           const codes = {1:'ABORTED',2:'NETWORK',3:'DECODE',4:'SRC_NOT_SUPPORTED'};
-          // Fetch the URL to get HTTP status for diagnosis
-          const fileName = item.audio.src.split('/').pop().split('?')[0];
-          fetch(item.audio.src, {method:'HEAD'}).then(r => {
+          const fileName = src.split('/').pop().split('?')[0];
+          fetch(src, {method:'HEAD'}).then(r => {
             trackStatus.textContent = `Load err: ${codes[code]||code} HTTP:${r.status} | ${fileName}`;
           }).catch(() => {
             trackStatus.textContent = `Load err: ${codes[code]||code} | ${fileName}`;
           });
         };
-        item.audio.addEventListener('canplay', onReady);
-        item.audio.addEventListener('error', onErr);
+        queueAudio.addEventListener('canplay', onReady);
+        queueAudio.addEventListener('error', onErr);
       }
       isPlaying = true;
       requestWakeLock();
       setButtonPlaying(item.btn || null);
       updateNowPlaying();
-
-      // Preload next track so it's ready when this one ends
-      const nextIdx = queueIndex + 1;
-      if (nextIdx < playQueue.length && playQueue[nextIdx].audio.readyState < 2) {
-        playQueue[nextIdx].audio.load();
-      }
-
-      item.audio.onended = () => {
-        if (repeatMode === 'one') {
-          item.audio.currentTime = 0;
-          item.audio.play().then(() => fadeIn(item.audio)).catch(() => {});
-          return;
-        }
-        advanceQueue();
-      };
       updateMediaSession();
     }
+
+    // Shared ended handler on queueAudio — always active
+    queueAudio.addEventListener('ended', () => {
+      if (repeatMode === 'one') {
+        queueAudio.currentTime = 0;
+        queueAudio.play().then(() => fadeIn(queueAudio)).catch(() => {});
+        return;
+      }
+      advanceQueue();
+    });
 
     function advanceQueue() {
       const nextIdx = queueIndex + 1;
@@ -2139,20 +2121,17 @@
     function stopAll(clearQueue) {
       if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
       clearButtonPlaying();
-      if (queueIndex >= 0 && queueIndex < playQueue.length) {
-        const audio = playQueue[queueIndex].audio;
-        if (isPlaying && !audio.paused) {
-          fadeOut(audio, () => {
-            isPlaying = false;
-            releaseWakeLock();
-            if (clearQueue) { playQueue = []; queueIndex = -1; }
-            updateNowPlaying();
-          });
-          return;
-        }
-        audio.pause();
-        audio.currentTime = 0;
+      if (isPlaying && !queueAudio.paused) {
+        fadeOut(queueAudio, () => {
+          isPlaying = false;
+          releaseWakeLock();
+          if (clearQueue) { playQueue = []; queueIndex = -1; }
+          updateNowPlaying();
+        });
+        return;
       }
+      queueAudio.pause();
+      queueAudio.currentTime = 0;
       isPlaying = false;
       releaseWakeLock();
       if (clearQueue) { playQueue = []; queueIndex = -1; }
@@ -2165,15 +2144,15 @@
       const item = playQueue[queueIndex];
       if (isPlaying) {
         clearButtonPlaying();
-        fadeOut(item.audio, () => {
+        fadeOut(queueAudio, () => {
           isPlaying = false;
           releaseWakeLock();
           updateNowPlaying();
         }, { resetTime: false });
         isPlaying = false;
       } else {
-        fadeIn(item.audio, 0.05);
-        item.audio.play();
+        fadeIn(queueAudio, 0.05);
+        queueAudio.play().catch(() => {});
         isPlaying = true;
         requestWakeLock();
         setButtonPlaying(item.btn || null);
@@ -2184,20 +2163,14 @@
     function skipNext() {
       if (playQueue.length === 0) return;
       if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
-      if (queueIndex >= 0 && queueIndex < playQueue.length) {
-        const a = playQueue[queueIndex].audio;
-        a.pause(); a.currentTime = 0; a.volume = 1;
-      }
+      queueAudio.pause(); queueAudio.currentTime = 0; queueAudio.volume = 1;
       advanceQueue();
     }
 
     function skipPrev() {
       if (playQueue.length === 0) return;
       if (fadeInterval) { clearInterval(fadeInterval); fadeInterval = null; }
-      if (queueIndex >= 0 && queueIndex < playQueue.length) {
-        const a = playQueue[queueIndex].audio;
-        a.pause(); a.currentTime = 0; a.volume = 1;
-      }
+      queueAudio.pause(); queueAudio.currentTime = 0; queueAudio.volume = 1;
       queueIndex = Math.max(0, queueIndex - 1);
       playCurrentInQueue();
     }
@@ -2268,16 +2241,15 @@
     }
     setInterval(() => {
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
-        const audio = playQueue[queueIndex].audio;
-        if (audio.duration) {
-          progressBar.style.width = (audio.currentTime / audio.duration * 100) + '%';
-          timeDisplay.textContent = fmtTime(audio.currentTime) + ' / ' + fmtTime(audio.duration);
+        if (queueAudio.duration) {
+          progressBar.style.width = (queueAudio.currentTime / queueAudio.duration * 100) + '%';
+          timeDisplay.textContent = fmtTime(queueAudio.currentTime) + ' / ' + fmtTime(queueAudio.duration);
         }
         // Fallback auto-advance: if track ended but onended didn't fire (iOS bg suspension)
-        if (audio.ended && isPlaying) {
+        if (queueAudio.ended && isPlaying) {
           if (repeatMode === 'one') {
-            audio.currentTime = 0;
-            audio.play().catch(() => {});
+            queueAudio.currentTime = 0;
+            queueAudio.play().catch(() => {});
           } else {
             advanceQueue();
           }
@@ -2290,11 +2262,10 @@
     // When page wakes from background (screen on), catch up on ended tracks
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && isPlaying && queueIndex >= 0 && queueIndex < playQueue.length) {
-        const audio = playQueue[queueIndex].audio;
-        if (audio.ended) {
+        if (queueAudio.ended) {
           if (repeatMode === 'one') {
-            audio.currentTime = 0;
-            audio.play().catch(() => {});
+            queueAudio.currentTime = 0;
+            queueAudio.play().catch(() => {});
           } else {
             advanceQueue();
           }
