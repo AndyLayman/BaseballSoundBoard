@@ -2221,7 +2221,7 @@
       progressBar.classList.toggle('paused', !isPlaying);
       if (queueIndex >= 0 && queueIndex < playQueue.length) {
         trackName.textContent = playQueue[queueIndex].label || playQueue[queueIndex].name;
-        trackStatus.textContent = isPlaying ? 'Now playing' : 'Paused';
+        trackStatus.textContent = isPlaying ? 'Playing' : 'Paused';
         playPauseBtn.innerHTML = isPlaying
           ? '<i class="iconoir-pause" style="font-size:24px;"></i>'
           : '<i class="iconoir-play" style="font-size:20px;"></i>';
