@@ -1922,12 +1922,21 @@
 
     function addToLibraryQueue(song) {
       const item = { audio: song.audio, name: song.title };
-      if (!isPlaying || playQueue.length === 0) {
+      if (playQueue.length === 0 || queueIndex < 0) {
+        // Nothing in queue — start fresh
         playFromQueue([item]);
+      } else if (!isPlaying && queueIndex >= playQueue.length - 1) {
+        // Queue finished — append and play the new item
+        playQueue.push(item);
+        queueIndex = playQueue.length - 1;
+        isPlaying = false;
+        playCurrentInQueue();
       } else {
+        // Currently playing or paused mid-queue — just append
         playQueue.push(item);
       }
       renderQueue();
+    }
     }
 
     function fadeOut(audio, cb, { resetTime = true } = {}) {
