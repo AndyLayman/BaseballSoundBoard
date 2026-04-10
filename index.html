@@ -2107,8 +2107,8 @@
           queueIndex = 0;
           if (isShuffle) shuffleRemaining(0);
           playCurrentInQueue();
-        } else if (isShuffle && playQueue.length > 0) {
-          // Shuffle keeps playing indefinitely — loop back
+        } else if (isShuffle && playQueue.length > 1) {
+          // Shuffle keeps playing indefinitely — loop back (only if multiple songs)
           queueIndex = 0;
           shuffleRemaining(0);
           playCurrentInQueue();
