@@ -751,6 +751,24 @@
         top: calc(50% + env(safe-area-inset-top) / 2);
       }
     }
+
+    /* Toast notifications */
+    .toast-container {
+      position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;
+      pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto; padding: 0.625rem 1rem; border-radius: 0.75rem;
+      font-size: 0.875rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid; backdrop-filter: blur(8px);
+      transition: opacity 0.5s, transform 0.5s;
+      opacity: 1; transform: translateY(0);
+    }
+    .toast.fading { opacity: 0; transform: translateY(0.5rem); }
+    .toast.error { background: rgba(220,38,38,0.9); color: #fff; border-color: rgba(220,38,38,0.5); }
+    .toast.success { background: rgba(5,150,105,0.9); color: #fff; border-color: rgba(5,150,105,0.5); }
+    .toast.info { background: var(--surface, rgba(30,30,30,0.9)); color: var(--text, #fff); border-color: var(--border, rgba(255,255,255,0.1)); }
   </style>
 </head>
 <body>
@@ -1354,7 +1372,7 @@
 
     document.getElementById('save-song-btn').addEventListener('click', async () => {
       const file = songFileInput.files[0];
-      if (!file) return alert('Please select an audio file.');
+      if (!file) return showToast('Please select an audio file', 'error');
       const title = songTitleInput.value.trim() || file.name.replace(/\.[^.]+$/, '');
       const artist = songArtistInput.value.trim();
       const selected = [...songCategoryChips.querySelectorAll('.chip.active')].map(c => c.dataset.value);
@@ -1368,10 +1386,10 @@
       const ext = fileExt(file.name);
       const libPath = `library-${id}${ext}`;
       const uploaded = await uploadFile(libPath, file);
-      if (!uploaded) { saveBtn.disabled = false; saveBtn.textContent = 'Upload'; return alert('Upload failed.'); }
+      if (!uploaded) { saveBtn.disabled = false; saveBtn.textContent = 'Upload'; return showToast('Upload failed', 'error'); }
 
       const { error } = await sb.from('library').insert({ id, title, artist, category, file_name: file.name, sort_order: librarySongs.length });
-      if (error) { console.error('Save song error:', error); saveBtn.disabled = false; saveBtn.textContent = 'Upload'; return alert('Save failed: ' + error.message); }
+      if (error) { console.error('Save song error:', error); saveBtn.disabled = false; saveBtn.textContent = 'Upload'; return showToast('Save failed: ' + error.message, 'error'); }
 
       const url = await signedStorageUrl(libPath);
       librarySongs.push({ id, title, artist, category, fileName: file.name, url, audio: makeAudio(url) });
@@ -2583,6 +2601,21 @@
         });
       }).catch(err => console.error('SW registration failed:', err));
     }
+  </script>
+
+  <div class="toast-container" id="toast-container"></div>
+  <script>
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      el.className = 'toast ' + type;
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(() => el.classList.add('fading'), 3000);
+      setTimeout(() => el.remove(), 3500);
+    }
+    window.addEventListener('offline', () => showToast('You are offline', 'error'));
+    window.addEventListener('online', () => showToast('Back online', 'success'));
   </script>
 </body>
 </html>
