@@ -27,8 +27,6 @@ export const SUPABASE_URL = ENV[CURRENT_ENV].url;
 export const SUPABASE_KEY = ENV[CURRENT_ENV].key;
 export const STORAGE_BUCKET = 'media';
 export const MEDIA_HOST = 'https://www.layman-design.com/six43';
-const MEDIA_KEY =
-  '1271akandfvkla akljskljldskaj lkajsdflakldjlkfjaljkhlkdsaj d safsa fassdfdasfds';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 export const isStaging = CURRENT_ENV === 'staging';
@@ -56,7 +54,6 @@ export async function uploadAudioFile(
     const form = new FormData();
     form.append('file', file);
     form.append('filename', filename);
-    form.append('key', MEDIA_KEY);
     const xhr = new XMLHttpRequest();
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
@@ -74,7 +71,7 @@ export async function uploadAudioFile(
       console.error('Audio upload network error:', filename);
       resolve(false);
     });
-    xhr.open('POST', `${MEDIA_HOST}/upload.php`);
+    xhr.open('POST', '/api/upload-audio');
     xhr.send(form);
   });
 }
