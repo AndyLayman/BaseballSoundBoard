@@ -809,6 +809,17 @@ nav button:hover:not(.active) { color: var(--text-muted); }
 .login-sent p { color: var(--text-muted); margin-bottom: var(--sp-2); }
 .login-sent .login-hint { font-size: var(--text-sm); color: var(--text-dim); }
 .login-sent strong { color: var(--text); }
+/* --- Team Switcher --- */
+.team-switcher {
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--r-2);
+  color: var(--text); font-family: var(--font); font-weight: var(--font-weight);
+  font-size: var(--text-sm); padding: 6px 10px; cursor: pointer; outline: none;
+  transition: border-color var(--duration-fast) var(--ease-in-out);
+  -webkit-appearance: none; appearance: none;
+}
+.team-switcher:hover { border-color: var(--clay); }
+.team-switcher:focus { border-color: var(--clay); }
+
 .login-error {
   margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3);
   background: rgba(220,38,38,0.1); border: 1px solid rgba(220,38,38,0.3);

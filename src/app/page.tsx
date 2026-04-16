@@ -77,7 +77,7 @@ function useToast() {
 
 export default function SoundboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, activeTeam, memberships, setActiveTeam } = useAuth();
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -141,12 +141,14 @@ export default function SoundboardPage() {
 
   // --- Load all data ---
   useEffect(() => {
+    if (!activeTeam) return;
     let cancelled = false;
+    const teamId = activeTeam.team_id;
 
     async function loadAll() {
       try {
         // Load sounds
-        const { data: soundRows } = await sb.from('sounds').select('*').order('sort_order');
+        const { data: soundRows } = await sb.from('sounds').select('*').eq('team_id', teamId).order('sort_order');
         const loadedSounds: Sound[] = [];
         if (soundRows) {
           for (const s of soundRows) {
@@ -157,7 +159,7 @@ export default function SoundboardPage() {
         }
 
         // Load players
-        const { data: playerRows } = await sb.from('players').select('*').order('sort_order');
+        const { data: playerRows } = await sb.from('players').select('*').eq('team_id', teamId).order('sort_order');
         const loadedPlayers: Player[] = [];
         if (playerRows) {
           for (const p of playerRows) {
@@ -233,9 +235,10 @@ export default function SoundboardPage() {
       }
     }
 
+    setLoading(true);
     loadAll();
     return () => { cancelled = true; };
-  }, []);
+  }, [activeTeam]);
 
   // --- Staging badge ---
   useEffect(() => {
@@ -268,6 +271,7 @@ export default function SoundboardPage() {
         file_name: file.name,
         label: file.name.replace(/\.[^.]+$/, ''),
         sort_order: sounds.length,
+        team_id: activeTeam!.team_id,
       }).select().single();
       if (error || !data) { console.error('Insert sound error:', error); continue; }
       const ext = fileExt(file.name);
@@ -299,6 +303,7 @@ export default function SoundboardPage() {
       last_name: newLastName,
       number: newNumber || '?',
       sort_order: players.length,
+      team_id: activeTeam!.team_id,
     }).select().single();
     if (error || !data) { console.error('Insert player error:', error); return; }
     const player: Player = {
@@ -329,6 +334,7 @@ export default function SoundboardPage() {
       photo_file: p.photoFile, intro_file: p.introFile,
       song_file: p.songFile, combo_file: p.comboFile,
       sort_order: p.sortOrder,
+      team_id: activeTeam!.team_id,
     };
     const { error } = await sb.from('players').upsert(payload);
     if (error) {
@@ -392,6 +398,7 @@ export default function SoundboardPage() {
           number: p.number, photo_file: p.photoFile,
           intro_file: p.introFile, song_file: p.songFile,
           combo_file: p.comboFile, sort_order: i,
+          team_id: activeTeam!.team_id,
         });
       });
       return copy;
@@ -483,12 +490,12 @@ export default function SoundboardPage() {
     : librarySongs;
 
   // --- Render ---
-  if (authLoading || !user) {
+  if (authLoading || !user || !activeTeam) {
     return (
       <div className="loading-overlay">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logos/Logo-White.svg" alt="Sound" style={{ height: 40, width: 'auto', marginBottom: 8 }} />
-        <div className="load-text">Checking authentication...</div>
+        <div className="load-text">{!authLoading && user && !activeTeam ? 'No team found' : 'Checking authentication...'}</div>
       </div>
     );
   }
@@ -511,6 +518,20 @@ export default function SoundboardPage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={isLight ? '/logos/Sound-Black.svg' : '/logos/Sound-White.svg'} alt="Sound" style={{ height: 24, width: 'auto' }} />
         {isStaging && <span className="stg-badge" style={{ background: 'oklab(0.769006 0.0640422 0.176756 / 0.2)', color: '#ffb900', border: '1px solid oklab(0.769006 0.0640422 0.176756 / 0.3)', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, letterSpacing: 0.5, textTransform: 'uppercase' as const }}>STG</span>}
+        {memberships.length > 1 && (
+          <select
+            className="team-switcher"
+            value={activeTeam.team_id}
+            onChange={(e) => {
+              const team = memberships.find((m) => m.team_id === e.target.value);
+              if (team) setActiveTeam(team);
+            }}
+          >
+            {memberships.map((m) => (
+              <option key={m.team_id} value={m.team_id}>{m.team_name}</option>
+            ))}
+          </select>
+        )}
         <button className={`settings-toggle ${settingsOpen ? 'active' : ''}`} onClick={settingsOpen ? closeSettings : openSettings} title="Settings">
           <i className="iconoir-settings" style={{ fontSize: 18 }} />
         </button>
