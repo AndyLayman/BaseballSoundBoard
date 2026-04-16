@@ -825,6 +825,16 @@ export default function SoundboardPage() {
                       <button title="Play" onClick={() => playLibrarySong(song)}>
                         <i className="iconoir-play" style={{ fontSize: 14 }} />
                       </button>
+                      <button
+                        title="Delete"
+                        onClick={() => {
+                          if (confirm(`Delete "${song.title}" from the library?`)) {
+                            deleteLibrarySong(song.id);
+                          }
+                        }}
+                      >
+                        <i className="iconoir-trash" style={{ fontSize: 14 }} />
+                      </button>
                     </div>
                   </div>
                 ))}
