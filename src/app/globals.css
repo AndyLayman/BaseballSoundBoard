@@ -361,8 +361,8 @@ nav button:hover:not(.active) { color: var(--text-muted); }
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: var(--gray-700) transparent;
-  padding: 20px 0;
-  margin: -20px 0;
+  padding: 20px var(--sp-4);
+  margin: -20px calc(-1 * var(--sp-4));
 }
 .board-wrap::-webkit-scrollbar { height: 4px; }
 .board-wrap::-webkit-scrollbar-track { background: transparent; }
@@ -729,6 +729,10 @@ nav button:hover:not(.active) { color: var(--text-muted); }
   .small-btn { padding: var(--sp-2) var(--sp-2); font-size: var(--text-sm); }
 
   .board { gap: 10px; }
+  .board-wrap {
+    padding: 20px var(--sp-3);
+    margin: -20px calc(-1 * var(--sp-3));
+  }
   .sound-btn {
     flex: 0 0 90px; width: 90px; height: 90px; font-size: var(--text-xs); padding: var(--sp-2);
     border-radius: var(--r-2);
